@@ -1,0 +1,14 @@
+-- Close the old request workflow and return any chips reserved by pending withdrawals.
+UPDATE wallets SET balance=balance+COALESCE((SELECT SUM(t.amount_cents) FROM chip_transfers t
+ WHERE t.player_id=wallets.player_id AND t.kind='WITHDRAWAL' AND t.status='PENDING'),0),revision=revision+1
+ WHERE player_id IN (SELECT player_id FROM chip_transfers WHERE kind='WITHDRAWAL' AND status='PENDING');
+UPDATE chip_transfers SET status='REJECTED',reference_text='Request workflow retired; any reserved chips returned'
+ WHERE status='PENDING';
+CREATE TABLE chip_notifications (
+ id VARCHAR(36) PRIMARY KEY, recipient_id VARCHAR(36) NOT NULL, sender_id VARCHAR(36) NOT NULL,
+ amount_cents BIGINT NOT NULL, movement_id VARCHAR(36) NOT NULL,
+ created_at BIGINT NOT NULL, read_at BIGINT,
+ FOREIGN KEY(recipient_id) REFERENCES accounts(id), FOREIGN KEY(sender_id) REFERENCES accounts(id),
+ UNIQUE(recipient_id,movement_id)
+);
+CREATE INDEX chip_notifications_unread ON chip_notifications(recipient_id,read_at,created_at);

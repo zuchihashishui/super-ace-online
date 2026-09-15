@@ -1,0 +1,69 @@
+package vn.emerald.ace;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import java.time.*;
+import java.util.*;
+
+@RestController @RequestMapping("/api")
+public class ApiController {
+ @org.springframework.beans.factory.annotation.Autowired ChipNotifications notifications;
+ @GetMapping("/notifications") public List<ChipNotifications.Notice> notifications(HttpServletRequest r){return notifications.unread(auth(r).user());}
+ @PostMapping("/notifications/{id}/read") public Map<String,Boolean> readNotification(HttpServletRequest r,@PathVariable UUID id){notifications.read(auth(r).user(),id.toString());return Map.of("ok",true);}
+ @org.springframework.beans.factory.annotation.Autowired LobbyGameService lobby;
+ @org.springframework.beans.factory.annotation.Autowired LobbyAutoService lobbyAuto;
+ GameService gameFor(HttpServletRequest r,Accounts.Auth auth){String mode=r.getParameter("mode");if(mode==null)mode="LOBBY";if(!List.of("LOBBY","CLUB").contains(mode))throw GameService.error(400,"INVALID_MODE");return auth.user().role()==Accounts.Role.PLAYER&&mode.equals("LOBBY")?lobby:game;}
+ AutoService autoFor(GameService selected){return selected==lobby?lobbyAuto:auto;}
+ final GameService game;final Accounts accounts;final AutoService auto;final Reports reports;final Chips chips;final boolean secure;
+ public ApiController(GameService game,Accounts accounts,AutoService auto,Reports reports,Chips chips,@Value("${ace.secure-cookie}")boolean secure){this.game=game;this.accounts=accounts;this.auto=auto;this.reports=reports;this.chips=chips;this.secure=secure;}
+ String namedCookie(HttpServletRequest r,String name){if(r.getCookies()!=null)for(var c:r.getCookies())if(c.getName().equals(name))return c.getValue();return null;}
+ String cookie(HttpServletRequest r){return namedCookie(r,"ACE_SESSION");}
+ Accounts.Auth auth(HttpServletRequest r){var a=accounts.authenticate(cookie(r));if(!r.getMethod().equals("GET"))accounts.csrf(a,r.getHeader("X-CSRF-Token"));return a;}
+ String sessionCookie(String token,long seconds){return ResponseCookie.from("ACE_SESSION",token).httpOnly(true).secure(secure).sameSite("Strict").path("/").maxAge(seconds).build().toString();}
+ public record LoginRequest(@NotBlank @Size(max=40)String username,@NotBlank @Size(max=72)String password){}
+ @PostMapping("/login") public ResponseEntity<?> login(HttpServletRequest r,@Valid @RequestBody LoginRequest body){var login=accounts.login(body.username(),body.password());return loggedIn(login,r);}
+ ResponseEntity<?> loggedIn(Accounts.Login login,HttpServletRequest r){return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,sessionCookie(login.token(),900),ResponseCookie.from("ACE_REFRESH",login.refresh()).httpOnly(true).secure(secure).sameSite("Strict").path("/api").maxAge(604800).build().toString()).body(gameFor(r,login.auth()).me(login.auth()));}
+ @org.springframework.beans.factory.annotation.Autowired DirectRegistration registration;
+ public record RegisterRequest(@NotBlank @Pattern(regexp="[A-Za-z0-9_]{3,40}")String username,@NotNull @Size(min=6,max=72)String password,@NotNull @Size(min=6,max=72)String rePassword){}
+ @PostMapping("/register") public ResponseEntity<?> register(HttpServletRequest r,@Valid @RequestBody RegisterRequest b){if(!b.password().equals(b.rePassword()))throw GameService.error(400,"PASSWORD_MISMATCH");return loggedIn(registration.register(b.username(),b.password()),r);}
+ @PostMapping("/refresh") public ResponseEntity<?> refresh(HttpServletRequest r){return loggedIn(accounts.refresh(namedCookie(r,"ACE_REFRESH")),r);}
+ public record ChangeRequest(@NotNull Accounts.Role role,String parentId,boolean enabled){}
+ @PutMapping("/accounts/{id}") public Accounts.User change(HttpServletRequest r,@PathVariable String id,@Valid @RequestBody ChangeRequest b){return accounts.change(auth(r).user(),id,b.role(),b.parentId(),b.enabled());}
+ @org.springframework.beans.factory.annotation.Autowired HierarchyChips hierarchyChips;
+ public record MoveRequest(@NotNull UUID requestId,@NotNull UUID targetId,@NotNull String direction,@Positive long amountCents){}
+ @PostMapping("/chips/move") public Map<String,Object> move(HttpServletRequest r,@Valid @RequestBody MoveRequest b){return hierarchyChips.move(auth(r).user(),b.requestId().toString(),b.targetId().toString(),b.direction(),b.amountCents());}
+ @PostMapping("/logout") public ResponseEntity<?> logout(HttpServletRequest r){auth(r);accounts.logout(cookie(r));return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,sessionCookie("",0),ResponseCookie.from("ACE_REFRESH","").httpOnly(true).secure(secure).sameSite("Strict").path("/api").maxAge(0).build().toString()).body(Map.of("ok",true));}
+ @GetMapping("/me") public GameService.Me me(HttpServletRequest r){var a=auth(r);return gameFor(r,a).me(a);}
+ public record PasswordRequest(@NotNull @Size(max=72)String oldPassword,@NotNull @Size(max=72)String newPassword){}
+ @PostMapping("/password") public Map<String,Boolean> password(HttpServletRequest r,@Valid @RequestBody PasswordRequest b){accounts.password(auth(r),b.oldPassword(),b.newPassword());return Map.of("ok",true);}
+ public record SpinRequest(@NotNull UUID requestId,@NotNull @Positive Long betCents,@NotNull @PositiveOrZero Long expectedRevision){}
+ @PostMapping("/spins") public GameService.SpinResult spin(HttpServletRequest r,@Valid @RequestBody SpinRequest b){var a=auth(r);return gameFor(r,a).spin(a.user(),b.requestId().toString(),b.betCents(),b.expectedRevision());}
+ public record AutoRequest(@NotNull UUID runId,@Min(10) @Max(500)int count,@Positive long betCents,@PositiveOrZero long expectedRevision,boolean turbo){}
+ public record StopRequest(@NotNull UUID runId){}
+ @GetMapping("/auto") public AutoService.State auto(HttpServletRequest r){var a=auth(r);return autoFor(gameFor(r,a)).state(a);}
+ @PostMapping("/auto/start") public AutoService.Job start(HttpServletRequest r,@Valid @RequestBody AutoRequest b){var a=auth(r);return autoFor(gameFor(r,a)).start(a.user(),b.runId().toString(),b.count(),b.betCents(),b.expectedRevision(),b.turbo());}
+ @PostMapping("/auto/stop") public AutoService.Job stop(HttpServletRequest r,@Valid @RequestBody StopRequest b){var a=auth(r);return autoFor(gameFor(r,a)).stop(a.user(),b.runId().toString());}
+ @GetMapping("/accounts") public List<Accounts.User> accounts(HttpServletRequest r){return accounts.list(auth(r).user());}
+ public record AccountRequest(@NotBlank @Size(max=40)String username,@NotBlank @Size(max=60)String displayName,@NotNull @Size(max=72)String password,@NotNull Accounts.Role role,@NotNull UUID parentId){}
+ @PostMapping("/accounts") public Accounts.User create(HttpServletRequest r,@Valid @RequestBody AccountRequest b){return accounts.create(auth(r).user(),b.username(),b.displayName(),b.password(),b.role(),b.parentId().toString());}
+ LocalDate date(String value){try{return value==null?reports.today():LocalDate.parse(value);}catch(Exception e){throw GameService.error(400,"INVALID_DATE");}}
+ @GetMapping("/reports") public Reports.Report report(HttpServletRequest r,@RequestParam(defaultValue="week")String period,@RequestParam(required=false)String date){return reports.report(auth(r).user(),period,date(date));}
+ @GetMapping("/ranking") public Map<String,Object> ranking(HttpServletRequest r,@RequestParam(defaultValue="week")String period,@RequestParam(required=false)String date){auth(r);return reports.ranking(period,date(date));}
+ @GetMapping("/settings") public Reports.Settings settings(HttpServletRequest r){var u=auth(r).user();if(u.role()==Accounts.Role.PLAYER)throw GameService.error(403,"FORBIDDEN");return reports.settings();}
+ public record SettingsRequest(@Min(0) @Max(10000)int commissionBps,@NotNull String commissionMode,@PositiveOrZero long revision){}
+ @PostMapping("/settings") public Reports.Settings settings(HttpServletRequest r,@Valid @RequestBody SettingsRequest b){return reports.settings(auth(r).user(),b.commissionBps(),b.commissionMode(),b.revision());}
+ @GetMapping("/settlements") public List<Reports.Settlement> settlements(HttpServletRequest r,@RequestParam(required=false)String date){return reports.settlements(auth(r).user(),date(date));}
+ public record SettlementRequest(@NotNull UUID agentId,@NotNull String weekStart,@NotNull String action,@Min(0) @Max(10000)int rateBps,@PositiveOrZero long revision,@NotNull @Size(max=200)String note){}
+ @PostMapping("/settlements/decide") public Map<String,Boolean> decide(HttpServletRequest r,@Valid @RequestBody SettlementRequest b){reports.decide(auth(r).user(),b.agentId().toString(),date(b.weekStart()),b.action(),b.rateBps(),b.revision(),b.note());return Map.of("ok",true);}
+ @GetMapping("/chips") public List<Chips.Transfer> chips(HttpServletRequest r,@RequestParam(defaultValue="0")int page){if(page<0||page>100000)throw GameService.error(400,"INVALID_REQUEST");return chips.history(auth(r).user(),page);}
+ public record ChipRequest(@NotNull UUID requestId,@NotNull String kind,@Positive long amountCents,@NotNull @Size(max=200)String reference){}
+ @PostMapping("/chips") public Chips.Transfer chips(HttpServletRequest r,@Valid @RequestBody ChipRequest b){auth(r);throw GameService.error(403,"CHIP_REQUESTS_DISABLED");}
+ public record DecisionRequest(@NotNull UUID id,boolean approve){}
+ @PostMapping("/chips/decide") public Chips.Transfer decide(HttpServletRequest r,@Valid @RequestBody DecisionRequest b){auth(r);throw GameService.error(403,"CHIP_REQUESTS_DISABLED");}
+ @org.springframework.beans.factory.annotation.Autowired RtpSchedule rtp;
+ @GetMapping("/rtp") public Map<String,Object> rtp(@RequestParam(defaultValue="LOBBY")String mode){if(!List.of("LOBBY","CLUB").contains(mode))throw GameService.error(400,"INVALID_MODE");var selected=mode.equals("LOBBY")?lobby:game;var totals=game.db().queryForMap("SELECT COALESCE(SUM(wager_cents),0) AS wager,COALESCE(SUM(payout_cents),0) AS payout FROM "+selected.table("round_ledger")+" WHERE rtp_profile=?",selected.activeProfile());long wager=((Number)totals.get("wager")).longValue(),payout=((Number)totals.get("payout")).longValue();var info=new HashMap<String,Object>();info.put("mode",mode);info.put("targetPercent",mode.equals("LOBBY")?98:97);info.put("payoutScale",GameEngine.scaleFor(selected.activeProfile()));info.put("observedPercent",wager==0?null:100.0*payout/wager);return info;}
+ @GetMapping("/health") public ResponseEntity<?> health(){boolean ready=game.db().queryForObject("SELECT COUNT(*) FROM accounts WHERE role='CREATOR'",Integer.class)>0;return ResponseEntity.status(ready?200:503).body(Map.of("status",ready?"up":"starting","version","13.0.0"));}
+}

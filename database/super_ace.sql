@@ -1,0 +1,185 @@
+-- Super Ace database schema V6 (MySQL 8+)
+-- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
+-- For existing V4/V5 databases use the matching upgrade file, OR simply start the new server.
+-- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
+CREATE DATABASE IF NOT EXISTS ace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE ace;
+-- V1__accounts_ledger_reports.sql
+CREATE TABLE accounts (
+ id VARCHAR(36) PRIMARY KEY, username VARCHAR(40) NOT NULL UNIQUE, display_name VARCHAR(60) NOT NULL,
+ password_hash VARCHAR(100) NOT NULL, role VARCHAR(20) NOT NULL, parent_id VARCHAR(36), enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ commission_bps INTEGER, created_at BIGINT NOT NULL, failed_logins INTEGER NOT NULL DEFAULT 0, locked_until BIGINT NOT NULL DEFAULT 0,
+ FOREIGN KEY(parent_id) REFERENCES accounts(id)
+);
+CREATE INDEX accounts_parent ON accounts(parent_id);
+CREATE TABLE wallets (
+ player_id VARCHAR(36) PRIMARY KEY, balance BIGINT NOT NULL, free_spins INTEGER NOT NULL DEFAULT 0,
+ locked_bet BIGINT NOT NULL DEFAULT 0, revision BIGINT NOT NULL DEFAULT 0, last_spin BIGINT NOT NULL DEFAULT 0,
+ FOREIGN KEY(player_id) REFERENCES accounts(id), CHECK(balance>=0), CHECK(free_spins>=0)
+);
+CREATE TABLE sessions (
+ token_hash VARCHAR(64) PRIMARY KEY, account_id VARCHAR(36) NOT NULL, csrf VARCHAR(64) NOT NULL, expires_at BIGINT NOT NULL,
+ FOREIGN KEY(account_id) REFERENCES accounts(id)
+);
+CREATE INDEX sessions_account ON sessions(account_id);
+CREATE TABLE app_settings (
+ id INTEGER PRIMARY KEY, commission_bps INTEGER NOT NULL, commission_mode VARCHAR(30) NOT NULL, revision BIGINT NOT NULL DEFAULT 0
+);
+INSERT INTO app_settings(id,commission_bps,commission_mode,revision) VALUES(1,3000,'POSITIVE_PLAYER',0);
+CREATE TABLE round_ledger (
+ player_id VARCHAR(36) NOT NULL, request_id VARCHAR(36) NOT NULL, agent_id VARCHAR(36) NOT NULL, super_agent_id VARCHAR(36) NOT NULL,
+ nominal_bet BIGINT NOT NULL, wager_cents BIGINT NOT NULL, payout_cents BIGINT NOT NULL, is_free BOOLEAN NOT NULL,
+ wallet_revision BIGINT NOT NULL, run_id VARCHAR(36), response_json LONGTEXT NOT NULL, created_at BIGINT NOT NULL,
+ PRIMARY KEY(player_id,request_id), UNIQUE(player_id,wallet_revision), FOREIGN KEY(player_id) REFERENCES accounts(id)
+);
+CREATE INDEX ledger_time_player ON round_ledger(created_at,player_id);
+CREATE INDEX ledger_agent_time ON round_ledger(agent_id,created_at);
+CREATE INDEX ledger_super_time ON round_ledger(super_agent_id,created_at);
+CREATE TABLE auto_jobs (
+ player_id VARCHAR(36) PRIMARY KEY, run_id VARCHAR(36) NOT NULL UNIQUE, active BOOLEAN NOT NULL, planned INTEGER NOT NULL,
+ paid_done INTEGER NOT NULL, free_done INTEGER NOT NULL, bet_cents BIGINT NOT NULL, net_cents BIGINT NOT NULL,
+ next_at BIGINT NOT NULL, latest_request_id VARCHAR(36), reason VARCHAR(120) NOT NULL, turbo BOOLEAN NOT NULL, created_at BIGINT NOT NULL,
+ FOREIGN KEY(player_id) REFERENCES accounts(id)
+);
+CREATE INDEX auto_due ON auto_jobs(active,next_at);
+CREATE TABLE weekly_settlements (
+ agent_id VARCHAR(36) NOT NULL, super_agent_id VARCHAR(36) NOT NULL, week_start VARCHAR(10) NOT NULL,
+ wager_cents BIGINT NOT NULL, payout_cents BIGINT NOT NULL, loss_base_cents BIGINT NOT NULL,
+ rate_bps INTEGER NOT NULL, commission_mode VARCHAR(30) NOT NULL, commission_cents BIGINT NOT NULL,
+ status VARCHAR(16) NOT NULL, revision BIGINT NOT NULL DEFAULT 0, closed_at BIGINT NOT NULL,
+ approved_by VARCHAR(36), paid_at BIGINT, note VARCHAR(200), details_json LONGTEXT NOT NULL,
+ PRIMARY KEY(agent_id,week_start), FOREIGN KEY(agent_id) REFERENCES accounts(id)
+);
+CREATE TABLE audit_log (
+ id VARCHAR(36) PRIMARY KEY, actor_id VARCHAR(36) NOT NULL, action_name VARCHAR(60) NOT NULL,
+ target_id VARCHAR(80) NOT NULL, detail_text VARCHAR(1000) NOT NULL, created_at BIGINT NOT NULL
+);
+CREATE TABLE chip_transfers (
+ id VARCHAR(36) PRIMARY KEY, player_id VARCHAR(36) NOT NULL, request_id VARCHAR(36) NOT NULL,
+ kind VARCHAR(16) NOT NULL, amount_cents BIGINT NOT NULL, status VARCHAR(16) NOT NULL,
+ reference_text VARCHAR(200) NOT NULL, created_at BIGINT NOT NULL, decided_at BIGINT,
+ decided_by VARCHAR(36), UNIQUE(player_id,request_id), FOREIGN KEY(player_id) REFERENCES accounts(id), CHECK(amount_cents>0)
+);
+CREATE INDEX transfers_player_time ON chip_transfers(player_id,created_at);
+
+-- V2__hierarchy_jwt_rtp.sql
+ALTER TABLE accounts ADD public_code VARCHAR(6);
+CREATE UNIQUE INDEX accounts_code ON accounts(public_code);
+CREATE TABLE hierarchy_lock (id INTEGER PRIMARY KEY);
+INSERT INTO hierarchy_lock VALUES(1);
+INSERT INTO wallets(player_id,balance,free_spins,locked_bet,revision,last_spin)
+ SELECT id,0,0,0,0,0 FROM accounts WHERE id NOT IN (SELECT player_id FROM wallets);
+CREATE TABLE refresh_tokens(token_hash VARCHAR(64) PRIMARY KEY,account_id VARCHAR(36) NOT NULL,session_hash VARCHAR(64) NOT NULL,expires_at BIGINT NOT NULL,FOREIGN KEY(account_id) REFERENCES accounts(id));
+CREATE INDEX refresh_account ON refresh_tokens(account_id);
+CREATE TABLE chip_movements(id VARCHAR(36) PRIMARY KEY,actor_id VARCHAR(36) NOT NULL,target_id VARCHAR(36) NOT NULL,direction VARCHAR(10) NOT NULL,amount_cents BIGINT NOT NULL,created_at BIGINT NOT NULL);
+CREATE TABLE rtp_schedule(id INTEGER PRIMARY KEY,starts_at BIGINT NOT NULL);
+ALTER TABLE wallets ADD bonus_profile VARCHAR(20);
+ALTER TABLE round_ledger ADD rtp_profile VARCHAR(20) NOT NULL DEFAULT 'LEGACY';
+
+-- V3__direct_registration.sql
+CREATE TABLE direct_registration (
+ id INTEGER PRIMARY KEY,
+ agent_id VARCHAR(36) NOT NULL,
+ super_agent_id VARCHAR(36) NOT NULL,
+ FOREIGN KEY(agent_id) REFERENCES accounts(id),
+ FOREIGN KEY(super_agent_id) REFERENCES accounts(id)
+);
+
+-- V4__lucky_seven_club.sql
+CREATE TABLE clubs (
+ id VARCHAR(36) PRIMARY KEY,
+ public_code VARCHAR(6) NOT NULL UNIQUE,
+ name VARCHAR(80) NOT NULL UNIQUE,
+ owner_id VARCHAR(36),
+ enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ created_at BIGINT NOT NULL
+);
+
+INSERT INTO clubs(id,public_code,name,enabled,created_at)
+ VALUES('00000000-0000-0000-0000-000000686868','686868','LUCKY SEVEN',TRUE,0);
+
+ALTER TABLE accounts ADD club_id VARCHAR(36) DEFAULT '00000000-0000-0000-0000-000000686868';
+UPDATE accounts SET club_id='00000000-0000-0000-0000-000000686868' WHERE club_id IS NULL;
+ALTER TABLE accounts ADD CONSTRAINT accounts_club_fk FOREIGN KEY(club_id) REFERENCES clubs(id);
+CREATE INDEX accounts_club ON accounts(club_id);
+
+ALTER TABLE clubs ADD CONSTRAINT clubs_owner_fk FOREIGN KEY(owner_id) REFERENCES accounts(id);
+UPDATE clubs SET owner_id=(SELECT id FROM accounts WHERE role='CREATOR' ORDER BY created_at,id LIMIT 1)
+ WHERE public_code='686868';
+
+ALTER TABLE direct_registration ADD club_id VARCHAR(36) DEFAULT '00000000-0000-0000-0000-000000686868';
+UPDATE direct_registration SET club_id='00000000-0000-0000-0000-000000686868' WHERE club_id IS NULL;
+ALTER TABLE direct_registration ADD CONSTRAINT direct_registration_club_fk FOREIGN KEY(club_id) REFERENCES clubs(id);
+
+-- V5__lobby_gold.sql
+-- Existing balances and round history remain CLUB chips. New LOBBY Gold is separate.
+CREATE TABLE lobby_wallets (
+ player_id VARCHAR(36) PRIMARY KEY, balance BIGINT NOT NULL,
+ free_spins INTEGER NOT NULL DEFAULT 0, locked_bet BIGINT NOT NULL DEFAULT 0,
+ revision BIGINT NOT NULL DEFAULT 0, last_spin BIGINT NOT NULL DEFAULT 0,
+ bonus_profile VARCHAR(20),
+ FOREIGN KEY(player_id) REFERENCES accounts(id), CHECK(balance>=0), CHECK(free_spins>=0)
+);
+INSERT INTO lobby_wallets(player_id,balance)
+ SELECT id,CASE WHEN role='PLAYER' THEN 1000000 ELSE 0 END FROM accounts;
+CREATE TABLE lobby_round_ledger (
+ player_id VARCHAR(36) NOT NULL, request_id VARCHAR(36) NOT NULL,
+ agent_id VARCHAR(36) NOT NULL, super_agent_id VARCHAR(36) NOT NULL,
+ nominal_bet BIGINT NOT NULL, wager_cents BIGINT NOT NULL, payout_cents BIGINT NOT NULL,
+ is_free BOOLEAN NOT NULL, wallet_revision BIGINT NOT NULL, run_id VARCHAR(36),
+ response_json LONGTEXT NOT NULL, created_at BIGINT NOT NULL, rtp_profile VARCHAR(20) NOT NULL,
+ PRIMARY KEY(player_id,request_id), UNIQUE(player_id,wallet_revision),
+ FOREIGN KEY(player_id) REFERENCES accounts(id)
+);
+CREATE INDEX lobby_ledger_time ON lobby_round_ledger(created_at,player_id);
+CREATE TABLE lobby_auto_jobs (
+ player_id VARCHAR(36) PRIMARY KEY, run_id VARCHAR(36) NOT NULL UNIQUE,
+ active BOOLEAN NOT NULL, planned INTEGER NOT NULL, paid_done INTEGER NOT NULL,
+ free_done INTEGER NOT NULL, bet_cents BIGINT NOT NULL, net_cents BIGINT NOT NULL,
+ next_at BIGINT NOT NULL, latest_request_id VARCHAR(36), reason VARCHAR(120) NOT NULL,
+ turbo BOOLEAN NOT NULL, created_at BIGINT NOT NULL,
+ FOREIGN KEY(player_id) REFERENCES accounts(id)
+);
+CREATE INDEX lobby_auto_due ON lobby_auto_jobs(active,next_at);
+
+-- V6__chip_notifications.sql
+-- Close the old request workflow and return any chips reserved by pending withdrawals.
+UPDATE wallets SET balance=balance+COALESCE((SELECT SUM(t.amount_cents) FROM chip_transfers t
+ WHERE t.player_id=wallets.player_id AND t.kind='WITHDRAWAL' AND t.status='PENDING'),0),revision=revision+1
+ WHERE player_id IN (SELECT player_id FROM chip_transfers WHERE kind='WITHDRAWAL' AND status='PENDING');
+UPDATE chip_transfers SET status='REJECTED',reference_text='Request workflow retired; any reserved chips returned'
+ WHERE status='PENDING';
+CREATE TABLE chip_notifications (
+ id VARCHAR(36) PRIMARY KEY, recipient_id VARCHAR(36) NOT NULL, sender_id VARCHAR(36) NOT NULL,
+ amount_cents BIGINT NOT NULL, movement_id VARCHAR(36) NOT NULL,
+ created_at BIGINT NOT NULL, read_at BIGINT,
+ FOREIGN KEY(recipient_id) REFERENCES accounts(id), FOREIGN KEY(sender_id) REFERENCES accounts(id),
+ UNIQUE(recipient_id,movement_id)
+);
+CREATE INDEX chip_notifications_unread ON chip_notifications(recipient_id,read_at,created_at);
+
+
+-- Club and management seed. All four default accounts use password 112357.
+INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
+ ('00000000-0000-0000-0000-000000000001','zuchiha','Creator','$2a$12$7lviHGXX73Z3wUgK1BVA3eUzskW0aO1AfHi/IxdAh.J8VbZLJdXw2','CREATOR',NULL,'000001',NULL,ROUND(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000)),
+ ('00000000-0000-0000-0000-000000000002','zuchiha1','Super Agent','$2a$12$7lviHGXX73Z3wUgK1BVA3eUzskW0aO1AfHi/IxdAh.J8VbZLJdXw2','SUPER_AGENT','00000000-0000-0000-0000-000000000001','000002',NULL,ROUND(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000)),
+ ('00000000-0000-0000-0000-000000000003','zuchiha2','Agent','$2a$12$7lviHGXX73Z3wUgK1BVA3eUzskW0aO1AfHi/IxdAh.J8VbZLJdXw2','AGENT','00000000-0000-0000-0000-000000000002','000003',0,ROUND(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000)),
+ ('00000000-0000-0000-0000-000000000004','zuchiha3','Player','$2a$12$7lviHGXX73Z3wUgK1BVA3eUzskW0aO1AfHi/IxdAh.J8VbZLJdXw2','PLAYER','00000000-0000-0000-0000-000000000003','000004',NULL,ROUND(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000));
+INSERT INTO wallets(player_id,balance) SELECT id,0 FROM accounts;
+INSERT INTO lobby_wallets(player_id,balance) SELECT id,CASE WHEN role='PLAYER' THEN 1000000 ELSE 0 END FROM accounts;
+INSERT INTO direct_registration(id,agent_id,super_agent_id) VALUES(1,'00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000002');
+UPDATE clubs SET owner_id='00000000-0000-0000-0000-000000000001',created_at=ROUND(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000) WHERE public_code='686868';
+
+CREATE TABLE flyway_schema_history (
+ installed_rank INT NOT NULL PRIMARY KEY, version VARCHAR(50), description VARCHAR(200) NOT NULL,
+ type VARCHAR(20) NOT NULL, script VARCHAR(1000) NOT NULL, checksum INT,
+ installed_by VARCHAR(100) NOT NULL, installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ execution_time INT NOT NULL, success BOOLEAN NOT NULL
+);
+CREATE INDEX flyway_schema_history_s_idx ON flyway_schema_history(success);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(1,'1','accounts ledger reports','SQL','V1__accounts_ledger_reports.sql',1516337208,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(2,'2','hierarchy jwt rtp','SQL','V2__hierarchy_jwt_rtp.sql',1250339110,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(3,'3','direct registration','SQL','V3__direct_registration.sql',-2032295050,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(4,'4','lucky seven club','SQL','V4__lucky_seven_club.sql',-1826169939,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(5,'5','lobby gold','SQL','V5__lobby_gold.sql',-610100519,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(6,'6','chip notifications','SQL','V6__chip_notifications.sql',-1135577595,CURRENT_USER(),0,1);
