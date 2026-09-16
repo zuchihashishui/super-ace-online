@@ -37,7 +37,7 @@ duyệt cũng phải có số dư tương ứng; rút được duyệt cộng v�
 
 Chip history ghi nạp/rút và chuyển chip; win/loss chỉ tính cược và payout, không tính chuyển chip.
 Mỗi lượt lưu Agent/Super Agent tại thời điểm quay; di chuyển Player không chuyển doanh số cũ.
-Báo cáo tuần đóng từ 06:00 thứ Hai theo REPORT_ZONE, mặc định Asia/Ho_Chi_Minh.
+Báo cáo tuần đóng từ 06:00 thứ Hai theo REPORT_ZONE, mặc định Asia/Manila.
 Hoa hồng mặc định 30%, Creator chọn lại tỷ lệ trước duyệt. Nếu Agent đổi Super Agent giữa
 tuần, bảng tổng hoa hồng Agent của tuần thuộc Super Agent của lượt cuối tuần đó;
 báo cáo cược vẫn phân theo Super Agent tại thời điểm từng lượt.

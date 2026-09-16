@@ -11,7 +11,14 @@ import java.security.MessageDigest;
 @Service
 public class Accounts {
  public enum Role {CREATOR,SUPER_AGENT,AGENT,PLAYER}
+ public static boolean canPlay(User user){return user!=null&&(user.role()==Role.PLAYER||user.role()==Role.AGENT);}
+ public void requireGame(User user){if(!canPlay(user))throw GameService.error(403,"PLAYER_ONLY");if(!user.enabled())throw unauthorized();}
  public record User(String id,String username,String displayName,Role role,String parentId,boolean enabled,Integer commissionBps,String publicCode){}
+ public record AccountView(String id,String username,String displayName,Role role,String parentId,boolean enabled,Integer commissionBps,String publicCode,long clubChipsCents){}
+ public List<AccountView> overview(User actor){
+  return list(actor).stream().map(u->new AccountView(u.id(),u.username(),u.displayName(),u.role(),u.parentId(),u.enabled(),u.commissionBps(),u.publicCode(),
+   db.queryForObject("SELECT balance FROM wallets WHERE player_id=?",Long.class,u.id()))).toList();
+ }
  public record Auth(User user,String csrf){}
  public record Login(Auth auth,String token,String refresh){}
  private final JdbcTemplate db;private final BCryptPasswordEncoder passwords=new BCryptPasswordEncoder(12);

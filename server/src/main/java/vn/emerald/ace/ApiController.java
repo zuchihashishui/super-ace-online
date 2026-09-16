@@ -10,12 +10,19 @@ import java.util.*;
 
 @RestController @RequestMapping("/api")
 public class ApiController {
+ @org.springframework.beans.factory.annotation.Autowired AgentMembership memberships;
+ public record RemovePlayerRequest(@NotNull UUID playerId,@NotNull UUID requestId){}
+ @PostMapping("/agent-membership/remove") public Map<String,Boolean> removePlayer(HttpServletRequest r,@Valid @RequestBody RemovePlayerRequest b){memberships.remove(auth(r).user(),b.playerId().toString(),b.requestId().toString());return Map.of("ok",true);}
+ public record JoinRequest(@NotNull @Pattern(regexp="[0-9]{6}") String agentCode){}
+ @GetMapping("/agent-membership") public List<AgentMembership.Request> memberships(HttpServletRequest r){return memberships.list(auth(r).user());}
+ @PostMapping("/agent-membership") public Map<String,Boolean> requestMembership(HttpServletRequest r,@Valid @RequestBody JoinRequest b){memberships.request(auth(r).user(),b.agentCode());return Map.of("ok",true);}
+ @PostMapping("/agent-membership/decide") public Map<String,Boolean> decideMembership(HttpServletRequest r,@Valid @RequestBody DecisionRequest b){memberships.decide(auth(r).user(),b.id().toString(),b.approve());return Map.of("ok",true);}
  @org.springframework.beans.factory.annotation.Autowired ChipNotifications notifications;
  @GetMapping("/notifications") public List<ChipNotifications.Notice> notifications(HttpServletRequest r){return notifications.unread(auth(r).user());}
  @PostMapping("/notifications/{id}/read") public Map<String,Boolean> readNotification(HttpServletRequest r,@PathVariable UUID id){notifications.read(auth(r).user(),id.toString());return Map.of("ok",true);}
  @org.springframework.beans.factory.annotation.Autowired LobbyGameService lobby;
  @org.springframework.beans.factory.annotation.Autowired LobbyAutoService lobbyAuto;
- GameService gameFor(HttpServletRequest r,Accounts.Auth auth){String mode=r.getParameter("mode");if(mode==null)mode="LOBBY";if(!List.of("LOBBY","CLUB").contains(mode))throw GameService.error(400,"INVALID_MODE");return auth.user().role()==Accounts.Role.PLAYER&&mode.equals("LOBBY")?lobby:game;}
+ GameService gameFor(HttpServletRequest r,Accounts.Auth auth){String mode=r.getParameter("mode");if(mode==null)mode="LOBBY";if(!List.of("LOBBY","CLUB").contains(mode))throw GameService.error(400,"INVALID_MODE");return Accounts.canPlay(auth.user())&&mode.equals("LOBBY")?lobby:game;}
  AutoService autoFor(GameService selected){return selected==lobby?lobbyAuto:auto;}
  final GameService game;final Accounts accounts;final AutoService auto;final Reports reports;final Chips chips;final boolean secure;
  public ApiController(GameService game,Accounts accounts,AutoService auto,Reports reports,Chips chips,@Value("${ace.secure-cookie}")boolean secure){this.game=game;this.accounts=accounts;this.auto=auto;this.reports=reports;this.chips=chips;this.secure=secure;}
@@ -46,7 +53,7 @@ public class ApiController {
  @GetMapping("/auto") public AutoService.State auto(HttpServletRequest r){var a=auth(r);return autoFor(gameFor(r,a)).state(a);}
  @PostMapping("/auto/start") public AutoService.Job start(HttpServletRequest r,@Valid @RequestBody AutoRequest b){var a=auth(r);return autoFor(gameFor(r,a)).start(a.user(),b.runId().toString(),b.count(),b.betCents(),b.expectedRevision(),b.turbo());}
  @PostMapping("/auto/stop") public AutoService.Job stop(HttpServletRequest r,@Valid @RequestBody StopRequest b){var a=auth(r);return autoFor(gameFor(r,a)).stop(a.user(),b.runId().toString());}
- @GetMapping("/accounts") public List<Accounts.User> accounts(HttpServletRequest r){return accounts.list(auth(r).user());}
+ @GetMapping("/accounts") public List<Accounts.AccountView> accounts(HttpServletRequest r){return accounts.overview(auth(r).user());}
  public record AccountRequest(@NotBlank @Size(max=40)String username,@NotBlank @Size(max=60)String displayName,@NotNull @Size(max=72)String password,@NotNull Accounts.Role role,@NotNull UUID parentId){}
  @PostMapping("/accounts") public Accounts.User create(HttpServletRequest r,@Valid @RequestBody AccountRequest b){return accounts.create(auth(r).user(),b.username(),b.displayName(),b.password(),b.role(),b.parentId().toString());}
  LocalDate date(String value){try{return value==null?reports.today():LocalDate.parse(value);}catch(Exception e){throw GameService.error(400,"INVALID_DATE");}}

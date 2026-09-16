@@ -26,7 +26,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to at least 32 random characters}
       CREATOR_USER: ${CREATOR_USER:-zuchiha}
       CREATOR_PASSWORD: ${CREATOR_PASSWORD:-112357}
-      REPORT_ZONE: ${REPORT_ZONE:-Asia/Ho_Chi_Minh}
+      REPORT_ZONE: ${REPORT_ZONE:-Asia/Manila}
       COOKIE_SECURE: "false"
     depends_on:
       db:

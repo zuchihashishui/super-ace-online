@@ -1,4 +1,16 @@
-# Current update: Lobby / Club, schema V6
+# Current update: unassigned Club Players, schema V8
+
+See [UPDATE-V8.md](UPDATE-V8.md). Any Agent can now remove their own Player
+without removing the Player from LUCKY SEVEN. This V8 delivery is source-only;
+build with Java 21 (`cd server && mvn package`). The earlier release JAR is V7
+and must not be used for this update.
+
+Agents can now play Game in addition to managing their Players.
+See [AGENT-GAME.md](AGENT-GAME.md) for wallets, commission treatment and test status.
+
+See [AGENT-MEMBERSHIP.md](AGENT-MEMBERSHIP.md) for joining an Agent, approval,
+scope checks and V6-to-V7 database upgrades. See [BACKEND-TEST-RESULTS.md](BACKEND-TEST-RESULTS.md)
+for current backend verification and release details.
 
 Read [UPDATE-LOBBY-CLUB.md](UPDATE-LOBBY-CLUB.md) for current behavior and [database/README.md](database/README.md) for SQL installation/upgrades. Full SQL: `database/super_ace.sql`. Fresh-install Creator: `zuchiha` / `112357`.
 

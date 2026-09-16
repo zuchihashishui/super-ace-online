@@ -10,7 +10,10 @@ function modeUI(){
  if(!$('chooseLobby'))return;
  const locked=modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
  const lobby=gameMode==='LOBBY';
- $('chooseLobby').disabled=locked||Boolean(player&&player.role!=='PLAYER');$('chooseClub').disabled=locked;
+ $('chooseClub').querySelector('b').textContent='LUCKY SEVEN';
+ $('chooseClub').querySelector('small').textContent='CLUB · 686868 · RTP 97%';
+ $('chooseClub').setAttribute('aria-label','Switch to LUCKY SEVEN');
+ $('chooseLobby').disabled=locked||Boolean(player&&!canPlay());$('chooseClub').disabled=locked;
  $('chooseLobby').setAttribute('aria-pressed',String(lobby));$('chooseClub').setAttribute('aria-pressed',String(!lobby));
  $('lobbyFunds').textContent=(player?fmt((lobby?balance*100:player.lobbyGoldCents)/100):'—')+' Gold';
  $('clubFunds').textContent=(player?fmt((!lobby?balance*100:player.clubChipsCents)/100):'—')+' chips';
@@ -20,10 +23,10 @@ function modeUI(){
 }
 async function switchMode(next){
  if(!['LOBBY','CLUB'].includes(next)||next===gameMode||modeChanging||busy||polling||pending||autoActive()||free>0)return;
- if(player&&player.role!=='PLAYER')return;
+ if(player&&!canPlay())return;
  const previous=gameMode;modeChanging=true;gameMode=next;update();
  try{
-  if(player){const wallet=await api('me');applyWallet(wallet);ready=wallet.role==='PLAYER';}
+  if(player){const wallet=await api('me');applyWallet(wallet);ready=canPlay(wallet);}
   last=0;seenRound=0;autoRun=null;pending=null;
   try{const saved=JSON.parse(sessionStorage.getItem('ace-pending-'+gameMode)||'null');if(saved?.playerId===player?.id&&saved?.mode===gameMode)pending=saved;sessionStorage.setItem('ace-mode',gameMode)}catch{}
   $('netResult').textContent='';$('chainValue').textContent='×1';
@@ -36,5 +39,5 @@ async function switchMode(next){
 $('chooseLobby').onclick=()=>switchMode('LOBBY');$('chooseClub').onclick=()=>switchMode('CLUB');
 // Migrate a pending request from the one-wallet release into CLUB only.
 try{const old=sessionStorage.getItem('ace-pending');if(old){const saved=JSON.parse(old);if(saved){saved.mode='CLUB';sessionStorage.setItem('ace-pending-CLUB',JSON.stringify(saved));}sessionStorage.removeItem('ace-pending')}}catch{}
-const beforeRole=applyRole;applyRole=()=>{beforeRole();if(player)$('profileInfo').textContent+=' · LUCKY SEVEN (686868) · '+(player.role==='PLAYER'?'LOBBY '+fmt(player.lobbyGoldCents/100)+' Gold · ':'')+'CLUB '+fmt(player.clubChipsCents/100)+' chips';};
+const beforeRole=applyRole;applyRole=()=>{beforeRole();if(player)$('profileInfo').textContent+=' · LUCKY SEVEN (686868) · '+(canPlay()?'LOBBY '+fmt(player.lobbyGoldCents/100)+' Gold · ':'')+'CLUB '+fmt(player.clubChipsCents/100)+' chips';};
 modeUI();localize();

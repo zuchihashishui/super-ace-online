@@ -1,4 +1,4 @@
--- Super Ace database schema V6 (MySQL 8+)
+-- Super Ace database schema V8 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
 -- For existing V4/V5 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
@@ -158,6 +158,28 @@ CREATE TABLE chip_notifications (
 );
 CREATE INDEX chip_notifications_unread ON chip_notifications(recipient_id,read_at,created_at);
 
+-- V7__agent_join_requests.sql
+CREATE TABLE agent_join_requests (
+ request_id VARCHAR(36) NOT NULL UNIQUE,
+ player_id VARCHAR(36) NOT NULL PRIMARY KEY,
+ agent_id VARCHAR(36) NOT NULL,
+ previous_parent_id VARCHAR(36),
+ status VARCHAR(16) NOT NULL,
+ created_at BIGINT NOT NULL,
+ decided_at BIGINT,
+ FOREIGN KEY (player_id) REFERENCES accounts(id),
+ FOREIGN KEY (agent_id) REFERENCES accounts(id)
+);
+CREATE INDEX agent_join_inbox ON agent_join_requests(agent_id,status);
+
+-- V8__unassigned_club_players.sql
+-- Players can belong to their Club without being managed by an Agent.
+-- Historical attribution remains unchanged; future unassigned rounds have no Agent.
+ALTER TABLE round_ledger MODIFY COLUMN agent_id VARCHAR(36) NULL;
+ALTER TABLE round_ledger MODIFY COLUMN super_agent_id VARCHAR(36) NULL;
+ALTER TABLE lobby_round_ledger MODIFY COLUMN agent_id VARCHAR(36) NULL;
+ALTER TABLE lobby_round_ledger MODIFY COLUMN super_agent_id VARCHAR(36) NULL;
+
 
 -- Club and management seed. All four default accounts use password 112357.
 INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
@@ -183,3 +205,5 @@ INSERT INTO flyway_schema_history(installed_rank,version,description,type,script
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(4,'4','lucky seven club','SQL','V4__lucky_seven_club.sql',-1826169939,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(5,'5','lobby gold','SQL','V5__lobby_gold.sql',-610100519,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(6,'6','chip notifications','SQL','V6__chip_notifications.sql',-1135577595,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(7,'7','agent join requests','SQL','V7__agent_join_requests.sql',85909202,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(8,'8','unassigned club players','SQL','V8__unassigned_club_players.sql',-101948530,CURRENT_USER(),0,1);

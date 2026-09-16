@@ -1,5 +1,6 @@
 """Start a disposable H2 server and exercise registration/login/logout end-to-end.
-Requires ACE_JAVA, ACE_H2, ACE_JSDOM. Never targets the user's MySQL instance.
+Requires ACE_JAVA, ACE_H2, ACE_JSDOM (unless ACE_SKIP_DOM=1).
+Never targets the user's MySQL instance.
 """
 import os,json,time,uuid,pathlib,subprocess,tempfile,urllib.request,urllib.error,http.cookiejar
 root=pathlib.Path(__file__).resolve().parents[1]
@@ -53,6 +54,9 @@ with tempfile.TemporaryFile(mode='w+') as log:
   from dual_mode_checks import check_modes
   check_modes(Client,creator,guest,name,me)
   print('PASS HTTP: register 6 chars/no referral; invalid/duplicate/forged fields; generated Player ID; login; wrong password; refresh; logout and token revocation; direct hierarchy.',flush=True)
-  subprocess.run(['node',str(root/'tools/simple_auth_dom.cjs')],env={**env,'ACE_TEST_URL':base},check=True)
+  if env.get('ACE_SKIP_DOM')=='1':
+   print('SKIP DOM: backend-only run (ACE_SKIP_DOM=1).',flush=True)
+  else:
+   subprocess.run(['node',str(root/'tools/simple_auth_dom.cjs')],env={**env,'ACE_TEST_URL':base},check=True)
  finally:
   server.terminate();server.wait(timeout=20)

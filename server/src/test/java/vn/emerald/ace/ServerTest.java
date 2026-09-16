@@ -13,9 +13,156 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-@SpringBootTest(properties={"spring.datasource.url=${TEST_DB_URL:jdbc:h2:mem:test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}","spring.datasource.username=${TEST_DB_USER:sa}","spring.datasource.password=${TEST_DB_PASSWORD:}","ace.creator-password=test-only-creator-password","ace.spin-cooldown-ms=0","ace.jobs-enabled=false","ace.jwt-secret=test-only-secret-at-least-32-characters"})
+@SpringBootTest(properties={"spring.datasource.url=${TEST_DB_URL:jdbc:h2:mem:test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}","spring.datasource.username=${TEST_DB_USER:sa}","spring.datasource.password=${TEST_DB_PASSWORD:}","ace.creator-user=creator","ace.zone=Asia/Manila","ace.creator-password=test-only-creator-password","ace.spin-cooldown-ms=0","ace.jobs-enabled=false","ace.jwt-secret=test-only-secret-at-least-32-characters"})
 @AutoConfigureMockMvc
 class ServerTest {
+ @Autowired AgentMembership memberships;
+ @Autowired HierarchyChips hierarchyChips;
+ @Autowired LobbyGameService lobby;
+ @Autowired LobbyAutoService lobbyAuto;
+ @Test void defaultAgentCanRemovePlayerWhoKeepsClubAndCanPlay(){
+  var root=creator();var agent=accounts.user(db.queryForObject("SELECT agent_id FROM direct_registration WHERE id=1",String.class));
+  var player=create(root,agent,Accounts.Role.PLAYER);String pid=player.id();
+  db.update("UPDATE wallets SET balance=100000 WHERE player_id=?",pid);
+  var club=db.queryForObject("SELECT club_id FROM accounts WHERE id=?",String.class,pid);
+  memberships.remove(agent,pid,id());var removed=accounts.user(pid);
+  assertNull(removed.parentId());assertEquals(club,db.queryForObject("SELECT club_id FROM accounts WHERE id=?",String.class,pid));
+  assertEquals(100000,game.wallet(pid,false).balanceCents());
+  assertFalse(accounts.inScope(agent,removed));assertFalse(accounts.inScope(accounts.user(agent.parentId()),removed));
+  assertThrows(GameService.ApiError.class,()->hierarchyChips.move(agent,id(),pid,"TAKE",100));
+  game.spin(removed,id(),2000,0);lobby.spin(removed,id(),2000,0);
+  assertNull(db.queryForObject("SELECT agent_id FROM round_ledger WHERE player_id=?",String.class,pid));
+  assertNull(db.queryForObject("SELECT agent_id FROM lobby_round_ledger WHERE player_id=?",String.class,pid));
+  var report=reports.report(removed,"week",LocalDate.now(ZoneId.of("Asia/Manila")));
+  assertEquals(2000,report.wagerCents());
+  memberships.request(removed,agent.publicCode());
+  var pending=memberships.list(agent).stream().filter(r->r.playerId().equals(pid)).findFirst().orElseThrow();
+  assertEquals("PENDING",pending.status());
+  assertNull(accounts.user(pid).parentId());
+  assertFalse(accounts.inScope(agent,accounts.user(pid)));
+  assertThrows(GameService.ApiError.class,()->hierarchyChips.move(agent,id(),pid,"TAKE",100));
+  String pendingId=pending.id();
+  assertThrows(GameService.ApiError.class,()->memberships.decide(removed,pendingId,true));
+  memberships.decide(agent,pending.id(),false);
+  assertNull(accounts.user(pid).parentId());
+  assertEquals("REJECTED",memberships.list(removed).getFirst().status());
+  memberships.request(removed,agent.publicCode());
+  pending=memberships.list(agent).stream().filter(r->r.playerId().equals(pid)).findFirst().orElseThrow();
+  memberships.decide(agent,pending.id(),true);assertEquals(agent.id(),accounts.user(pid).parentId());
+ }
+ @Test void removePlayerPreservesWalletAndSessionAndRevokesScope(){
+  var t=tree();var other=tree();String target=t.player().id(),request=id();
+  var login=accounts.login(t.player().username(),"test-only-user-password");
+  db.update("UPDATE wallets SET free_spins=2,locked_bet=2000 WHERE player_id=?",target);
+  auto.start(t.player(),id(),10,2000,0,true);
+  memberships.request(t.player(),other.agent().publicCode());
+  var before=game.wallet(target,false);var gold=lobby.wallet(target,false);var job=auto.job(target);
+  assertThrows(GameService.ApiError.class,()->memberships.remove(other.agent(),target,id()));
+  assertThrows(GameService.ApiError.class,()->memberships.remove(t.player(),target,id()));
+  memberships.remove(t.agent(),target,request);
+  assertNull(accounts.user(target).parentId());
+  assertEquals(before,game.wallet(target,false));assertEquals(gold,lobby.wallet(target,false));
+  assertEquals(job,auto.job(target));assertTrue(accounts.user(target).enabled());
+  assertNull(accounts.authenticate(login.token()).user().parentId());
+  assertFalse(accounts.inScope(t.agent(),accounts.user(target)));
+  assertEquals("REMOVED",memberships.list(accounts.user(target)).getFirst().status());
+  assertTrue(memberships.list(other.agent()).isEmpty());
+  assertThrows(GameService.ApiError.class,()->hierarchyChips.move(t.agent(),id(),target,"TAKE",100));
+  memberships.remove(t.agent(),target,request);
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM audit_log WHERE id=?",Integer.class,request));
+  memberships.request(accounts.user(target),t.agent().publicCode());
+  memberships.decide(t.agent(),memberships.list(t.agent()).getFirst().id(),true);
+  memberships.remove(t.agent(),target,request);
+  assertEquals(t.agent().id(),accounts.user(target).parentId());
+  assertThrows(GameService.ApiError.class,()->memberships.remove(t.agent(),other.player().id(),request));
+ }
+ @Test void accountOverviewReturnsScopedClubBalances(){
+  var t=tree();var other=tree();String target=t.player().id();
+  db.update("UPDATE wallets SET balance=12345 WHERE player_id=?",target);
+  db.update("UPDATE lobby_wallets SET balance=999999 WHERE player_id=?",target);
+  var rows=accounts.overview(t.agent());
+  assertTrue(rows.stream().noneMatch(a->a.id().equals(other.player().id())));
+  assertEquals(12345,rows.stream().filter(a->a.id().equals(target)).findFirst().orElseThrow().clubChipsCents());
+  assertTrue(accounts.overview(t.sa()).stream().anyMatch(a->a.id().equals(target)));
+  assertTrue(accounts.overview(t.root()).stream().anyMatch(a->a.id().equals(other.player().id())));
+  hierarchyChips.move(t.agent(),id(),target,"TAKE",100);
+  assertEquals(12245,accounts.overview(t.agent()).stream().filter(a->a.id().equals(target)).findFirst().orElseThrow().clubChipsCents());
+  assertEquals(999999,lobby.wallet(target,false).balanceCents());
+ }
+ @Test void agentCanPlayBothModesAndManagePlayers(){
+  var t=tree();String agent=t.agent().id();
+  db.update("UPDATE wallets SET balance=100000 WHERE player_id=?",agent);
+  db.update("UPDATE lobby_wallets SET balance=100000 WHERE player_id=?",agent);
+  String request=id();var club=game.spin(t.agent(),request,2000,0);
+  var retry=game.spin(t.agent(),request,2000,0);
+  assertEquals(club.revision(),retry.revision());assertEquals(club.balanceCents(),retry.balanceCents());
+  assertEquals(100000,db.queryForObject("SELECT balance FROM lobby_wallets WHERE player_id=?",Long.class,agent));
+  assertEquals(agent,db.queryForObject("SELECT agent_id FROM round_ledger WHERE player_id=?",String.class,agent));
+  assertEquals(t.sa().id(),db.queryForObject("SELECT super_agent_id FROM round_ledger WHERE player_id=?",String.class,agent));
+  var gold=lobby.spin(t.agent(),id(),2000,0);
+  assertEquals(club.balanceCents(),game.wallet(agent,false).balanceCents());
+  String run=id();auto.start(t.agent(),run,10,2000,club.revision(),true);auto.process(agent);auto.stop(t.agent(),run);
+  assertEquals(club.revision()+1,game.wallet(agent,false).revision());
+  String lobbyRun=id();lobbyAuto.start(t.agent(),lobbyRun,10,2000,gold.revision(),true);lobbyAuto.process(agent);lobbyAuto.stop(t.agent(),lobbyRun);
+  assertEquals(gold.revision()+1,lobby.wallet(agent,false).revision());
+  long own=game.wallet(agent,false).balanceCents(),child=game.wallet(t.player().id(),false).balanceCents();
+  hierarchyChips.move(t.agent(),id(),t.player().id(),"GIVE",100);
+  assertEquals(own-100,game.wallet(agent,false).balanceCents());
+  assertEquals(child+100,game.wallet(t.player().id(),false).balanceCents());
+  hierarchyChips.move(t.agent(),id(),t.player().id(),"TAKE",100);
+  assertEquals(own,game.wallet(agent,false).balanceCents());
+  var outsider=tree();assertThrows(GameService.ApiError.class,()->hierarchyChips.move(t.agent(),id(),outsider.player().id(),"TAKE",100));
+  assertThrows(GameService.ApiError.class,()->game.spin(t.sa(),id(),2000,0));
+  assertThrows(GameService.ApiError.class,()->game.spin(t.root(),id(),2000,0));
+ }
+ @Test void agentOwnLossDoesNotEarnCommission(){
+  var self=new Reports.Row("agent","Agent","agent","Agent",10000,0,-10000,1,1,0);
+  var child=new Reports.Row("player","Player","agent","Agent",1000,200,-800,1,1,0);
+  assertEquals(800,Reports.lossBase(List.of(self,child),"NET_AGENT"));
+  assertEquals(800,Reports.lossBase(List.of(self,child),"POSITIVE_PLAYER"));
+  assertEquals(0,Reports.lossBase(List.of(self),"POSITIVE_PLAYER"));
+ }
+ @Test void membershipApprovalMovesScopeWithoutMovingBalances(){
+  var old=tree();var next=tree();var outsider=tree();
+  long chipsBefore=game.wallet(old.player().id(),false).balanceCents();
+  Long goldBefore=db.queryForObject("SELECT balance FROM lobby_wallets WHERE player_id=?",Long.class,old.player().id());
+  memberships.request(old.player(),next.agent().publicCode());
+  memberships.request(old.player(),next.agent().publicCode());
+  assertEquals(1,memberships.list(next.agent()).size());
+  String joinId=memberships.list(next.agent()).getFirst().id();
+  assertTrue(memberships.list(outsider.agent()).isEmpty());
+  assertThrows(GameService.ApiError.class,()->memberships.decide(outsider.agent(),joinId,true));
+  assertEquals(old.agent().id(),accounts.user(old.player().id()).parentId());
+  memberships.decide(next.agent(),joinId,true);
+  memberships.decide(next.agent(),joinId,true);
+  assertEquals(next.agent().id(),accounts.user(old.player().id()).parentId());
+  assertFalse(accounts.inScope(old.agent(),accounts.user(old.player().id())));
+  assertTrue(accounts.inScope(next.sa(),accounts.user(old.player().id())));
+  assertEquals(chipsBefore,game.wallet(old.player().id(),false).balanceCents());
+  assertEquals(goldBefore,db.queryForObject("SELECT balance FROM lobby_wallets WHERE player_id=?",Long.class,old.player().id()));
+  assertThrows(GameService.ApiError.class,()->hierarchyChips.move(old.agent(),id(),old.player().id(),"TAKE",100));
+  hierarchyChips.move(next.agent(),id(),old.player().id(),"TAKE",100);
+  String transfer=id();hierarchyChips.move(next.agent(),transfer,old.player().id(),"GIVE",100);
+  hierarchyChips.move(next.agent(),transfer,old.player().id(),"GIVE",100);
+  assertEquals(chipsBefore,game.wallet(old.player().id(),false).balanceCents());
+  assertThrows(GameService.ApiError.class,()->hierarchyChips.move(next.agent(),id(),old.player().id(),"GIVE",100));
+ }
+ @Test void membershipRejectAndRoleRestrictions(){
+  var a=tree();var b=tree();
+  assertThrows(GameService.ApiError.class,()->memberships.request(a.agent(),b.agent().publicCode()));
+  assertThrows(GameService.ApiError.class,()->memberships.request(a.player(),b.sa().publicCode()));
+  assertThrows(GameService.ApiError.class,()->memberships.request(a.player(),a.agent().publicCode()));
+  memberships.request(a.player(),b.agent().publicCode());
+  String joinId=memberships.list(b.agent()).getFirst().id();
+  memberships.decide(b.agent(),joinId,false);
+  assertEquals(a.agent().id(),accounts.user(a.player().id()).parentId());
+  assertEquals("REJECTED",memberships.list(a.player()).getFirst().status());
+  assertThrows(GameService.ApiError.class,()->memberships.decide(b.agent(),joinId,true));
+  memberships.request(a.player(),b.agent().publicCode());
+  assertNotEquals(joinId,memberships.list(b.agent()).getFirst().id());
+  assertThrows(GameService.ApiError.class,()->memberships.decide(b.agent(),joinId,true));
+  assertEquals(a.agent().id(),accounts.user(a.player().id()).parentId());
+ }
  @Autowired GameService game;@Autowired Accounts accounts;@Autowired AutoService auto;@Autowired Reports reports;@Autowired Chips chips;@Autowired JdbcTemplate db;@Autowired MockMvc mvc;
  String id(){return UUID.randomUUID().toString();}
  Accounts.User creator(){return accounts.login("creator","test-only-creator-password").auth().user();}
@@ -33,7 +180,7 @@ class ServerTest {
  @Test void concurrentAutoWorkersCannotDoubleSpin()throws Exception{var t=tree();auto.start(t.player(),id(),10,2000,0,true);try(var pool=Executors.newFixedThreadPool(4)){var jobs=new ArrayList<Future<?>>();for(int i=0;i<4;i++)jobs.add(pool.submit(()->auto.process(t.player().id())));for(var f:jobs)f.get(15,TimeUnit.SECONDS);}assertEquals(1,auto.job(t.player().id()).completed());assertEquals(1,game.wallet(t.player().id(),false).revision());}
  @Test void transfersReserveRefundAndApproveExactlyOnce()throws Exception{var t=tree();String request=id();var w=chips.request(t.player(),request,"WITHDRAWAL",12345,"test");assertEquals(987655,game.wallet(t.player().id(),false).balanceCents());assertEquals(w.id(),chips.request(t.player(),request,"WITHDRAWAL",12345,"test").id());assertEquals(987655,game.wallet(t.player().id(),false).balanceCents());chips.decide(t.agent(),w.id(),false);chips.decide(t.agent(),w.id(),false);assertEquals(1000000,game.wallet(t.player().id(),false).balanceCents());db.update("UPDATE wallets SET balance=100000 WHERE player_id=?",t.agent().id());var d=chips.request(t.player(),id(),"DEPOSIT",54321,"test");assertEquals(1000000,game.wallet(t.player().id(),false).balanceCents());try(var pool=Executors.newFixedThreadPool(2)){var a=pool.submit(()->chips.decide(t.agent(),d.id(),true));var b=pool.submit(()->chips.decide(t.agent(),d.id(),true));a.get(15,TimeUnit.SECONDS);b.get(15,TimeUnit.SECONDS);}assertEquals(1054321,game.wallet(t.player().id(),false).balanceCents());assertEquals(0,reports.report(t.player(),"week",reports.today()).netCents());var outsider=tree();assertEquals("FORBIDDEN",assertThrows(GameService.ApiError.class,()->chips.decide(outsider.agent(),d.id(),true)).code);}
  void ledger(Tree t,Accounts.User p,long time,long bet,long payout,boolean free,long rev){db.update("INSERT INTO round_ledger(player_id,request_id,agent_id,super_agent_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,response_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,'{}',?)",p.id(),id(),t.agent().id(),t.sa().id(),2000,bet,payout,free,rev,time);}
- @Test void weeklyTimezoneBoundariesFreePayoutsAndIsolation(){var t=tree();var p=reports.period("week",LocalDate.of(2026,8,5));assertEquals("2026-08-03",p.start());assertEquals(Instant.parse("2026-08-02T17:00:00Z").toEpochMilli(),p.from());ledger(t,t.player(),p.from()-1,2000,0,false,1);ledger(t,t.player(),p.from(),2000,100,false,2);ledger(t,t.player(),p.to()-1,0,500,true,3);ledger(t,t.player(),p.to(),2000,10000,false,4);var result=reports.report(t.agent(),"week",LocalDate.of(2026,8,5));assertEquals(2000,result.wagerCents());assertEquals(600,result.payoutCents());assertEquals(-1400,result.netCents());assertEquals(1,result.players().getFirst().freeSpins());assertEquals(0,reports.report(tree().agent(),"week",LocalDate.of(2026,8,5)).players().size());var ranks=(List<Reports.Rank>)reports.ranking("week",LocalDate.of(2026,8,5)).get("players");assertEquals(2000,ranks.stream().filter(r->r.displayName().equals(t.player().displayName())).findFirst().orElseThrow().wagerCents());}
+ @Test void weeklyTimezoneBoundariesFreePayoutsAndIsolation(){var t=tree();var p=reports.period("week",LocalDate.of(2026,8,5));assertEquals("2026-08-03",p.start());assertEquals(Instant.parse("2026-08-02T16:00:00Z").toEpochMilli(),p.from());ledger(t,t.player(),p.from()-1,2000,0,false,1);ledger(t,t.player(),p.from(),2000,100,false,2);ledger(t,t.player(),p.to()-1,0,500,true,3);ledger(t,t.player(),p.to(),2000,10000,false,4);var result=reports.report(t.agent(),"week",LocalDate.of(2026,8,5));assertEquals(2000,result.wagerCents());assertEquals(600,result.payoutCents());assertEquals(-1400,result.netCents());assertEquals(1,result.players().getFirst().freeSpins());assertEquals(0,reports.report(tree().agent(),"week",LocalDate.of(2026,8,5)).players().size());var ranks=(List<Reports.Rank>)reports.ranking("week",LocalDate.of(2026,8,5)).get("players");assertEquals(2000,ranks.stream().filter(r->r.displayName().equals(t.player().displayName())).findFirst().orElseThrow().wagerCents());}
  @Test void commissionModesAndSnapshotApproval(){var t=tree();var winner=create(t.root(),t.agent(),Accounts.Role.PLAYER);LocalDate date=LocalDate.of(2026,7,6);var p=reports.period("week",date);db.update("UPDATE accounts SET created_at=? WHERE id=?",p.from()-1,t.agent().id());ledger(t,t.player(),p.from(),100000,20000,false,1);ledger(t,winner,p.from(),100000,130000,false,1);var settings=reports.settings();reports.settings(t.root(),3000,"POSITIVE_PLAYER",settings.revision());reports.closeWeek(date);var s=reports.settlements(t.agent(),date).getFirst();assertEquals(80000,s.lossBaseCents());assertEquals(24000,s.commissionCents());assertEquals(50000,Reports.lossBase(s.players(),"NET_AGENT"));assertEquals(15000,Reports.commission(50000,3000));
   reports.decide(t.root(),t.agent().id(),date,"APPROVE",2500,s.revision(),"reviewed");var approved=reports.settlements(t.agent(),date).getFirst();assertEquals(20000,approved.commissionCents());reports.decide(t.root(),t.agent().id(),date,"PAID",2500,approved.revision(),"record only");assertEquals("PAID",reports.settlements(t.agent(),date).getFirst().status());reports.closeWeek(date);assertEquals(1,reports.settlements(t.agent(),date).size());assertEquals(1000000,game.wallet(t.player().id(),false).balanceCents());assertThrows(GameService.ApiError.class,()->reports.decide(t.agent(),t.agent().id(),date,"PAID",2500,2,""));}
  @Test void loginLockoutAndPasswordRevokesSessions(){var t=tree();for(int i=0;i<5;i++)assertEquals("BAD_LOGIN",assertThrows(GameService.ApiError.class,()->accounts.login(t.player().username(),"incorrect")).code);assertEquals("LOGIN_LOCKED",assertThrows(GameService.ApiError.class,()->accounts.login(t.player().username(),"test-only-user-password")).code);db.update("UPDATE accounts SET locked_until=0 WHERE id=?",t.player().id());var login=accounts.login(t.player().username(),"test-only-user-password");accounts.password(login.auth(),"test-only-user-password","another-test-password");assertThrows(GameService.ApiError.class,()->accounts.authenticate(login.token()));assertNotNull(accounts.login(t.player().username(),"another-test-password"));}

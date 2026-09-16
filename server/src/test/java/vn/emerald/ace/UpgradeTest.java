@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.*;
 import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
-@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:upgrade;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","spring.datasource.username=sa","spring.datasource.password=","ace.creator-password=test-only-creator-password","ace.jwt-secret=test-only-secret-at-least-32-characters","ace.jobs-enabled=false","ace.spin-cooldown-ms=0"})
+@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:upgrade;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1","spring.datasource.username=sa","spring.datasource.password=","ace.creator-user=creator","ace.zone=Asia/Manila","ace.creator-password=test-only-creator-password","ace.jwt-secret=test-only-secret-at-least-32-characters","ace.jobs-enabled=false","ace.spin-cooldown-ms=0"})
 class UpgradeTest {
  @Autowired Accounts accounts;@Autowired HierarchyChips chips;@Autowired GameService game;@Autowired JdbcTemplate db;@Autowired RtpSchedule rtp;
  String id(){return UUID.randomUUID().toString();}
