@@ -11,7 +11,7 @@ import java.security.MessageDigest;
 @Service
 public class Accounts {
  public enum Role {CREATOR,SUPER_AGENT,AGENT,PLAYER}
- public static boolean canPlay(User user){return user!=null&&(user.role()==Role.PLAYER||user.role()==Role.AGENT);}
+ public static boolean canPlay(User user){return user!=null;}
  public void requireGame(User user){if(!canPlay(user))throw GameService.error(403,"PLAYER_ONLY");if(!user.enabled())throw unauthorized();}
  public record User(String id,String username,String displayName,Role role,String parentId,boolean enabled,Integer commissionBps,String publicCode){}
  public record AccountView(String id,String username,String displayName,Role role,String parentId,boolean enabled,Integer commissionBps,String publicCode,long clubChipsCents){}

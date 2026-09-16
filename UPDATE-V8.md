@@ -1,5 +1,8 @@
 # V8: remove Agent ownership while retaining Club membership
 
+Historical V8 delivery notes below. V9 includes these changes and a rebuilt,
+tested JAR; see UPDATE-V9.md and BACKEND-TEST-RESULTS.md for current validation.
+
 Request Join always creates a PENDING request, even for Players without an
 Agent. Only the requested Agent's Approve action assigns the Player. Reject
 leaves the Player unassigned. The UI now explicitly states that approval is

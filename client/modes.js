@@ -8,10 +8,10 @@ Object.assign(filipino,{
 });
 function modeUI(){
  if(!$('chooseLobby'))return;
- const locked=modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
+ const locked=rtpSaving||modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
  const lobby=gameMode==='LOBBY';
  $('chooseClub').querySelector('b').textContent='LUCKY SEVEN';
- $('chooseClub').querySelector('small').textContent='CLUB · 686868 · RTP 97%';
+ $('chooseClub').querySelector('small').textContent='CLUB · 686868';
  $('chooseClub').setAttribute('aria-label','Switch to LUCKY SEVEN');
  $('chooseLobby').disabled=locked||Boolean(player&&!canPlay());$('chooseClub').disabled=locked;
  $('chooseLobby').setAttribute('aria-pressed',String(lobby));$('chooseClub').setAttribute('aria-pressed',String(!lobby));
@@ -22,7 +22,7 @@ function modeUI(){
  document.body.dataset.playMode=gameMode;
 }
 async function switchMode(next){
- if(!['LOBBY','CLUB'].includes(next)||next===gameMode||modeChanging||busy||polling||pending||autoActive()||free>0)return;
+ if(!['LOBBY','CLUB'].includes(next)||next===gameMode||rtpSaving||modeChanging||busy||polling||pending||autoActive()||free>0)return;
  if(player&&!canPlay())return;
  const previous=gameMode;modeChanging=true;gameMode=next;update();
  try{

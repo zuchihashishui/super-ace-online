@@ -20,6 +20,46 @@ class ServerTest {
  @Autowired HierarchyChips hierarchyChips;
  @Autowired LobbyGameService lobby;
  @Autowired LobbyAutoService lobbyAuto;
+ @Autowired RtpSettings rtpSettings;
+ @Test void onlyCreatorCanReadAndUpdateDecimalRtp()throws Exception{
+  var t=tree();var old=rtpSettings.get("CLUB");
+  mvc.perform(get("/api/rtp")).andExpect(status().isUnauthorized());
+  for(var user:List.of(t.player(),t.agent(),t.sa())){
+   var login=accounts.login(user.username(),"test-only-user-password");var cookie=new Cookie("ACE_SESSION",login.token());
+   mvc.perform(get("/api/rtp").cookie(cookie)).andExpect(status().isForbidden());
+   mvc.perform(put("/api/rtp").cookie(cookie).header("X-Game-Client","web").header("X-CSRF-Token",login.auth().csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"targetPercent\":97.55,\"revision\":0}")).andExpect(status().isForbidden());
+   assertNull(game.me(login.auth()).rtpProfile());
+  }
+  var login=accounts.login(t.root().username(),"test-only-creator-password");var cookie=new Cookie("ACE_SESSION",login.token());
+  try{
+   mvc.perform(put("/api/rtp?mode=CLUB").cookie(cookie).header("X-Game-Client","web").header("X-CSRF-Token",login.auth().csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"targetPercent\":97.55,\"revision\":"+old.revision()+"}")).andExpect(status().isOk()).andExpect(jsonPath("$.targetPercent").value(97.55));
+   assertEquals("RTP_9755",game.activeProfile());assertEquals("RTP_9700",lobby.activeProfile());
+   assertThrows(GameService.ApiError.class,()->rtpSettings.update(t.root(),"CLUB",new java.math.BigDecimal("98"),old.revision()));
+   for(String invalid:List.of("0","100.01","97.555"))assertThrows(GameService.ApiError.class,()->rtpSettings.update(t.root(),"CLUB",new java.math.BigDecimal(invalid),rtpSettings.get("CLUB").revision()));
+   var result=game.spin(t.player(),id(),2000,0);
+   assertEquals("RTP_9755",db.queryForObject("SELECT rtp_profile FROM round_ledger WHERE player_id=?",String.class,t.player().id()));
+   db.update("UPDATE wallets SET free_spins=1,locked_bet=2000,bonus_profile='RTP_9755' WHERE player_id=?",t.player().id());
+   rtpSettings.update(t.root(),"CLUB",new java.math.BigDecimal("96"),rtpSettings.get("CLUB").revision());
+   String freeId=id();game.spin(t.player(),freeId,2000,result.revision());
+   assertEquals("RTP_9755",db.queryForObject("SELECT rtp_profile FROM round_ledger WHERE player_id=? AND request_id=?",String.class,t.player().id(),freeId));
+  }finally{rtpSettings.update(t.root(),"CLUB",old.targetPercent(),rtpSettings.get("CLUB").revision());}
+ }
+ @Test void everyRoleCanPlayBothModesAndAutoplay(){
+  var t=tree();
+  for(var user:List.of(t.player(),t.agent(),t.sa(),t.root())){
+   db.update("UPDATE wallets SET balance=1000000 WHERE player_id=?",user.id());
+   db.update("UPDATE lobby_wallets SET balance=1000000 WHERE player_id=?",user.id());
+   var result=game.spin(user,id(),2000,game.wallet(user.id(),false).revision());
+   assertEquals(1000000,lobby.wallet(user.id(),false).balanceCents());
+   var gold=lobby.spin(user,id(),2000,lobby.wallet(user.id(),false).revision());
+   assertEquals(result.balanceCents(),game.wallet(user.id(),false).balanceCents());
+   String run=id();auto.start(user,run,10,2000,result.revision(),true);auto.process(user.id());auto.stop(user,run);
+   assertEquals(result.revision()+1,game.wallet(user.id(),false).revision());
+   String lobbyRun=id();lobbyAuto.start(user,lobbyRun,10,2000,gold.revision(),true);lobbyAuto.process(user.id());lobbyAuto.stop(user,lobbyRun);
+   assertEquals(gold.revision()+1,lobby.wallet(user.id(),false).revision());
+   if(user.role()==Accounts.Role.CREATOR||user.role()==Accounts.Role.SUPER_AGENT)assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM round_ledger WHERE player_id=? AND agent_id IS NOT NULL",Integer.class,user.id()));
+  }
+ }
  @Test void defaultAgentCanRemovePlayerWhoKeepsClubAndCanPlay(){
   var root=creator();var agent=accounts.user(db.queryForObject("SELECT agent_id FROM direct_registration WHERE id=1",String.class));
   var player=create(root,agent,Accounts.Role.PLAYER);String pid=player.id();
@@ -112,8 +152,8 @@ class ServerTest {
   hierarchyChips.move(t.agent(),id(),t.player().id(),"TAKE",100);
   assertEquals(own,game.wallet(agent,false).balanceCents());
   var outsider=tree();assertThrows(GameService.ApiError.class,()->hierarchyChips.move(t.agent(),id(),outsider.player().id(),"TAKE",100));
-  assertThrows(GameService.ApiError.class,()->game.spin(t.sa(),id(),2000,0));
-  assertThrows(GameService.ApiError.class,()->game.spin(t.root(),id(),2000,0));
+  assertTrue(Accounts.canPlay(t.sa()));
+  assertTrue(Accounts.canPlay(t.root()));
  }
  @Test void agentOwnLossDoesNotEarnCommission(){
   var self=new Reports.Row("agent","Agent","agent","Agent",10000,0,-10000,1,1,0);

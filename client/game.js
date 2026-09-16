@@ -8,7 +8,7 @@ const autoOptions=[10,25,50,100,250,500];let selectedAuto=10,autoRun=null;
 const autoActive=()=>Boolean(autoRun?.active);
 let autoTimer=null,activeFree=false;
 let ready=false,player=null,revision=0,pending=null;
-const canPlay=(account=player)=>Boolean(account&&['PLAYER','AGENT'].includes(account.role));
+const canPlay=(account=player)=>Boolean(account&&['PLAYER','AGENT','SUPER_AGENT','CREATOR'].includes(account.role));
 let balance=0,betIndex=1,free=0,busy=false,turbo=false,auto=0,sound=true,audioCtx,board=[],last=0;
 // Missing or invalid display values must not render as NaN/Infinity.
 const fmt=n=>new Intl.NumberFormat(language==='fil'?'fil-PH':'en-PH',{maximumFractionDigits:2}).format(Number.isFinite(Number(n))?Number(n):0);

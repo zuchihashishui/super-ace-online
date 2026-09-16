@@ -1,4 +1,4 @@
--- Super Ace database schema V8 (MySQL 8+)
+-- Super Ace database schema V9 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
 -- For existing V4/V5 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
@@ -180,6 +180,15 @@ ALTER TABLE round_ledger MODIFY COLUMN super_agent_id VARCHAR(36) NULL;
 ALTER TABLE lobby_round_ledger MODIFY COLUMN agent_id VARCHAR(36) NULL;
 ALTER TABLE lobby_round_ledger MODIFY COLUMN super_agent_id VARCHAR(36) NULL;
 
+-- V9__creator_rtp_settings.sql
+CREATE TABLE rtp_settings (
+ mode VARCHAR(10) PRIMARY KEY,
+ target_bps INTEGER NOT NULL,
+ revision BIGINT NOT NULL DEFAULT 0,
+ CHECK(target_bps >= 100 AND target_bps <= 10000)
+);
+INSERT INTO rtp_settings(mode,target_bps) VALUES('LOBBY',9700),('CLUB',9700);
+
 
 -- Club and management seed. All four default accounts use password 112357.
 INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
@@ -207,3 +216,4 @@ INSERT INTO flyway_schema_history(installed_rank,version,description,type,script
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(6,'6','chip notifications','SQL','V6__chip_notifications.sql',-1135577595,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(7,'7','agent join requests','SQL','V7__agent_join_requests.sql',85909202,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(8,'8','unassigned club players','SQL','V8__unassigned_club_players.sql',-101948530,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(9,'9','creator rtp settings','SQL','V9__creator_rtp_settings.sql',135689784,CURRENT_USER(),0,1);

@@ -70,7 +70,15 @@ public class ApiController {
  @PostMapping("/chips") public Chips.Transfer chips(HttpServletRequest r,@Valid @RequestBody ChipRequest b){auth(r);throw GameService.error(403,"CHIP_REQUESTS_DISABLED");}
  public record DecisionRequest(@NotNull UUID id,boolean approve){}
  @PostMapping("/chips/decide") public Chips.Transfer decide(HttpServletRequest r,@Valid @RequestBody DecisionRequest b){auth(r);throw GameService.error(403,"CHIP_REQUESTS_DISABLED");}
- @org.springframework.beans.factory.annotation.Autowired RtpSchedule rtp;
- @GetMapping("/rtp") public Map<String,Object> rtp(@RequestParam(defaultValue="LOBBY")String mode){if(!List.of("LOBBY","CLUB").contains(mode))throw GameService.error(400,"INVALID_MODE");var selected=mode.equals("LOBBY")?lobby:game;var totals=game.db().queryForMap("SELECT COALESCE(SUM(wager_cents),0) AS wager,COALESCE(SUM(payout_cents),0) AS payout FROM "+selected.table("round_ledger")+" WHERE rtp_profile=?",selected.activeProfile());long wager=((Number)totals.get("wager")).longValue(),payout=((Number)totals.get("payout")).longValue();var info=new HashMap<String,Object>();info.put("mode",mode);info.put("targetPercent",mode.equals("LOBBY")?98:97);info.put("payoutScale",GameEngine.scaleFor(selected.activeProfile()));info.put("observedPercent",wager==0?null:100.0*payout/wager);return info;}
+ @org.springframework.beans.factory.annotation.Autowired RtpSettings rtpSettings;
+ public record RtpRequest(@NotNull java.math.BigDecimal targetPercent,@PositiveOrZero long revision){}
+ @PutMapping("/rtp") public Map<String,Object> updateRtp(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody RtpRequest body){rtpSettings.update(auth(r).user(),mode,body.targetPercent(),body.revision());return rtp(r,mode);}
+ @GetMapping("/rtp") public Map<String,Object> rtp(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode){
+  accounts.require(auth(r).user(),Accounts.Role.CREATOR);
+  var setting=rtpSettings.get(mode);var selected=mode.equals("LOBBY")?lobby:game;
+  var totals=game.db().queryForMap("SELECT COALESCE(SUM(wager_cents),0) AS wager,COALESCE(SUM(payout_cents),0) AS payout FROM "+selected.table("round_ledger")+" WHERE rtp_profile=?",setting.profile());
+  long wager=((Number)totals.get("wager")).longValue(),payout=((Number)totals.get("payout")).longValue();
+  var info=new HashMap<String,Object>();info.put("mode",mode);info.put("targetPercent",setting.targetPercent());info.put("revision",setting.revision());info.put("payoutScale",GameEngine.scaleFor(setting.profile()));info.put("observedPercent",wager==0?null:100.0*payout/wager);return info;
+ }
  @GetMapping("/health") public ResponseEntity<?> health(){boolean ready=game.db().queryForObject("SELECT COUNT(*) FROM accounts WHERE role='CREATOR'",Integer.class)>0;return ResponseEntity.status(ready?200:503).body(Map.of("status",ready?"up":"starting","version","13.0.0"));}
 }

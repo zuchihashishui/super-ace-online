@@ -14,7 +14,7 @@ public class GameEngine {
  private final IntUnaryOperator random;
  private double payoutScale=1;
  public GameEngine(IntUnaryOperator random,String profile){this(random);payoutScale=scaleFor(profile);}
- public static double scaleFor(String profile){return switch(profile){case "CLUB_97","INTRO_97"->0.97/0.96712357778;case "LOBBY_98"->0.98/0.96712357778;case "STANDARD_96"->0.96/0.96712357778;case "LEGACY"->1;default->throw new IllegalArgumentException("Unknown RTP profile");};}
+ public static double scaleFor(String profile){if(profile.matches("RTP_[0-9]{3,5}")){int bps=Integer.parseInt(profile.substring(4));if(bps<100||bps>10000)throw new IllegalArgumentException("Invalid RTP");return (bps/10000.0)/0.96712357778;}return switch(profile){case "CLUB_97","INTRO_97"->0.97/0.96712357778;case "LOBBY_98"->0.98/0.96712357778;case "STANDARD_96"->0.96/0.96712357778;case "LEGACY"->1;default->throw new IllegalArgumentException("Unknown RTP profile");};}
  public GameEngine(String profile){this(new SecureRandom()::nextInt,profile);}
  public GameEngine(){SecureRandom secure=new SecureRandom();random=secure::nextInt;}
  public GameEngine(IntUnaryOperator random){this.random=random;}

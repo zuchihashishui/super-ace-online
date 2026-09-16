@@ -37,8 +37,8 @@ with tempfile.TemporaryFile(mode='w+') as log:
   guest.call('register',{'username':name,'password':'123456'},400)
   me=guest.call('register',credentials);assert me['role']=='PLAYER';assert me['displayName']==name;assert len(me['publicCode'])==6 and me['publicCode'].isdigit();assert guest.call('me')['id']==me['id']
   assert me['mode']=='LOBBY' and me['lobbyGoldCents']==1000000 and me['clubChipsCents']==0 and me['clubCode']=='686868'
-  club=guest.call('me?mode=CLUB');assert club['balanceCents']==0 and club['rtpProfile']=='CLUB_97'
-  assert guest.call('rtp?mode=LOBBY')['targetPercent']==98 and guest.call('rtp?mode=CLUB')['targetPercent']==97
+  club=guest.call('me?mode=CLUB');assert club['balanceCents']==0 and club['rtpProfile'] is None
+  guest.call('rtp?mode=LOBBY',expected=403);guest.call('rtp?mode=CLUB',expected=403)
   guest.call('me?mode=INVALID',expected=400)
   tokens={c.name:c.value for c in guest.jar};assert len(tokens['ACE_SESSION'].split('.'))==3
   guest.call('register',credentials,409)

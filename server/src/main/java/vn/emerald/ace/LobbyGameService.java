@@ -10,5 +10,5 @@ public class LobbyGameService extends GameService {
  public LobbyGameService(JdbcTemplate db,ObjectMapper json,Accounts accounts,@Value("${ace.spin-cooldown-ms}")long cooldown){super(db,json,accounts,cooldown);}
  @Override String table(String name){return "lobby_"+name;}
  @Override String mode(){return "LOBBY";}
- @Override String activeProfile(){return "LOBBY_98";}
+
 }

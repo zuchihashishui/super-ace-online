@@ -1,9 +1,14 @@
-# Current update: unassigned Club Players, schema V8
+# Current update: Creator RTP settings and Game for all roles, schema V9
 
-See [UPDATE-V8.md](UPDATE-V8.md). Any Agent can now remove their own Player
-without removing the Player from LUCKY SEVEN. This V8 delivery is source-only;
-build with Java 21 (`cd server && mvn package`). The earlier release JAR is V7
-and must not be used for this update.
+Windows: start.bat and start-local.bat read the external
+`server/src/main/resources/application.properties` directly, without loading
+dotenv files. Local MySQL defaults are root / 123456.
+See [WINDOWS-CONFIG.md](WINDOWS-CONFIG.md) for details.
+
+See [UPDATE-V9.md](UPDATE-V9.md). All four roles can play Lobby and Club.
+Only Creator can read/edit RTP settings. Both modes default to 97%, with
+independent settings supporting two decimal places. V8 Agent removal and
+approval changes are included. See BACKEND-TEST-RESULTS.md for validation.
 
 Agents can now play Game in addition to managing their Players.
 See [AGENT-GAME.md](AGENT-GAME.md) for wallets, commission treatment and test status.
