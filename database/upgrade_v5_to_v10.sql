@@ -1,0 +1,66 @@
+-- ONLY for schema V5. Stop the server before importing. Back up the database first.
+-- Do not run if Flyway already applied these versions.
+USE ace;
+
+-- V6__chip_notifications.sql
+-- Close the old request workflow and return any chips reserved by pending withdrawals.
+UPDATE wallets SET balance=balance+COALESCE((SELECT SUM(t.amount_cents) FROM chip_transfers t
+ WHERE t.player_id=wallets.player_id AND t.kind='WITHDRAWAL' AND t.status='PENDING'),0),revision=revision+1
+ WHERE player_id IN (SELECT player_id FROM chip_transfers WHERE kind='WITHDRAWAL' AND status='PENDING');
+UPDATE chip_transfers SET status='REJECTED',reference_text='Request workflow retired; any reserved chips returned'
+ WHERE status='PENDING';
+CREATE TABLE chip_notifications (
+ id VARCHAR(36) PRIMARY KEY, recipient_id VARCHAR(36) NOT NULL, sender_id VARCHAR(36) NOT NULL,
+ amount_cents BIGINT NOT NULL, movement_id VARCHAR(36) NOT NULL,
+ created_at BIGINT NOT NULL, read_at BIGINT,
+ FOREIGN KEY(recipient_id) REFERENCES accounts(id), FOREIGN KEY(sender_id) REFERENCES accounts(id),
+ UNIQUE(recipient_id,movement_id)
+);
+CREATE INDEX chip_notifications_unread ON chip_notifications(recipient_id,read_at,created_at);
+
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(6,'6','chip notifications','SQL','V6__chip_notifications.sql',-1135577595,CURRENT_USER(),0,1);
+
+-- V7__agent_join_requests.sql
+CREATE TABLE agent_join_requests (
+ request_id VARCHAR(36) NOT NULL UNIQUE,
+ player_id VARCHAR(36) NOT NULL PRIMARY KEY,
+ agent_id VARCHAR(36) NOT NULL,
+ previous_parent_id VARCHAR(36),
+ status VARCHAR(16) NOT NULL,
+ created_at BIGINT NOT NULL,
+ decided_at BIGINT,
+ FOREIGN KEY (player_id) REFERENCES accounts(id),
+ FOREIGN KEY (agent_id) REFERENCES accounts(id)
+);
+CREATE INDEX agent_join_inbox ON agent_join_requests(agent_id,status);
+
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(7,'7','agent join requests','SQL','V7__agent_join_requests.sql',85909202,CURRENT_USER(),0,1);
+
+-- V8__unassigned_club_players.sql
+-- Players can belong to their Club without being managed by an Agent.
+-- Historical attribution remains unchanged; future unassigned rounds have no Agent.
+ALTER TABLE round_ledger MODIFY COLUMN agent_id VARCHAR(36) NULL;
+ALTER TABLE round_ledger MODIFY COLUMN super_agent_id VARCHAR(36) NULL;
+ALTER TABLE lobby_round_ledger MODIFY COLUMN agent_id VARCHAR(36) NULL;
+ALTER TABLE lobby_round_ledger MODIFY COLUMN super_agent_id VARCHAR(36) NULL;
+
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(8,'8','unassigned club players','SQL','V8__unassigned_club_players.sql',-101948530,CURRENT_USER(),0,1);
+
+-- V9__creator_rtp_settings.sql
+CREATE TABLE rtp_settings (
+ mode VARCHAR(10) PRIMARY KEY,
+ target_bps INTEGER NOT NULL,
+ revision BIGINT NOT NULL DEFAULT 0,
+ CHECK(target_bps >= 100 AND target_bps <= 10000)
+);
+INSERT INTO rtp_settings(mode,target_bps) VALUES('LOBBY',9700),('CLUB',9700);
+
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(9,'9','creator rtp settings','SQL','V9__creator_rtp_settings.sql',135689784,CURRENT_USER(),0,1);
+
+-- V10__dragon_tiger.sql
+ALTER TABLE round_ledger ADD COLUMN game_type VARCHAR(20) NOT NULL DEFAULT 'SUPER_ACE';
+ALTER TABLE lobby_round_ledger ADD COLUMN game_type VARCHAR(20) NOT NULL DEFAULT 'SUPER_ACE';
+CREATE INDEX ledger_game_player ON round_ledger(player_id,game_type,wallet_revision);
+CREATE INDEX lobby_ledger_game_player ON lobby_round_ledger(player_id,game_type,wallet_revision);
+
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(10,'10','dragon tiger','SQL','V10__dragon_tiger.sql',1445817963,CURRENT_USER(),0,1);

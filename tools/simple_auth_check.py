@@ -51,12 +51,41 @@ with tempfile.TemporaryFile(mode='w+') as log:
   assert guest.call('refresh',{})['id']==me['id']
   guest.call('logout',{})
   creator=Client();creator.call('login',{'username':env['CREATOR_USER'],'password':env['CREATOR_PASSWORD']});rows=creator.call('accounts');defaults={u['username']:u for u in rows};assert all(defaults[u]['role']==r for u,r in [('zuchiha1','SUPER_AGENT'),('zuchiha2','AGENT'),('zuchiha3','PLAYER')]);assert defaults['zuchiha3']['parentId']==defaults['zuchiha2']['id'];assert next(u for u in rows if u['id']==me['id'])['parentId']==defaults['zuchiha2']['id']
+  assert creator.call('rtp?mode=LOBBY')['targetPercent']==100
+  assert creator.call('rtp?mode=CLUB')['targetPercent']==97.5
   from dual_mode_checks import check_modes
   check_modes(Client,creator,guest,name,me)
+  bettor=Client();bettor.call('register',{'username':'bet'+uuid.uuid4().hex[:12],'password':'123456','rePassword':'123456'})
+  for mode in ['LOBBY','CLUB']:
+   for invalid in [0,499,50001,-500]:
+    state=bettor.call('me?mode='+mode)
+    bettor.call('spins?mode='+mode,{'requestId':str(uuid.uuid4()),'betCents':invalid,'expectedRevision':state['revision']},400)
+    bettor.call('auto/start?mode='+mode,{'runId':str(uuid.uuid4()),'count':10,'betCents':invalid,'expectedRevision':state['revision'],'turbo':False},400)
+  state=bettor.call('me?mode=LOBBY')
+  creator.call('chips/move',{'requestId':str(uuid.uuid4()),'targetId':state['id'],'direction':'GIVE','amountCents':100000})
+  for mode in ['LOBBY','CLUB']:
+   for wager in [500,755,50000]:
+    state=bettor.call('me?mode='+mode)
+    while state['freeSpins']:
+     bettor.call('spins?mode='+mode,{'requestId':str(uuid.uuid4()),'betCents':state['lockedBetCents'],'expectedRevision':state['revision']})
+     state=bettor.call('me?mode='+mode)
+    req={'requestId':str(uuid.uuid4()),'betCents':wager,'expectedRevision':state['revision']}
+    result=bettor.call('spins?mode='+mode,req)
+    assert result['betCents']==wager and result['balanceBeforeCents']==state['balanceCents']
+    assert bettor.call('spins?mode='+mode,req)==result
+   state=bettor.call('me?mode='+mode)
+   wager=state['lockedBetCents'] if state['freeSpins'] else 755
+   run=str(uuid.uuid4())
+   job=bettor.call('auto/start?mode='+mode,{'runId':run,'count':10,'betCents':wager,'expectedRevision':state['revision'],'turbo':False})
+   assert job['active']
+   bettor.call('auto/stop?mode='+mode,{'runId':run})
+  print('PASS custom bets: 5, 7.55, 500 in both modes; invalid manual/auto bets rejected; idempotent retries.',flush=True)
   print('PASS HTTP: register 6 chars/no referral; invalid/duplicate/forged fields; generated Player ID; login; wrong password; refresh; logout and token revocation; direct hierarchy.',flush=True)
   if env.get('ACE_SKIP_DOM')=='1':
    print('SKIP DOM: backend-only run (ACE_SKIP_DOM=1).',flush=True)
   else:
    subprocess.run(['node',str(root/'tools/simple_auth_dom.cjs')],env={**env,'ACE_TEST_URL':base},check=True)
+  if env.get('ACE_BROWSER_CHECK'):
+   subprocess.run(['node',str(root/'tools/dragon_tiger_browser.cjs')],env={**env,'ACE_TEST_URL':base},check=True)
  finally:
   server.terminate();server.wait(timeout=20)

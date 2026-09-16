@@ -31,7 +31,7 @@ public class GameService {
  @Transactional public SpinResult spin(Accounts.User u,String requestId,long bet,long expectedRevision){accounts.requireGame(u);Wallet w=wallet(u.id(),true);var prior=saved(u.id(),requestId);if(prior!=null){if(prior.betCents()!=bet)throw error(409,"REQUEST_REUSED");return prior;}if(db.queryForObject("SELECT COUNT(*) FROM "+table("auto_jobs")+" WHERE player_id=? AND active=TRUE",Integer.class,u.id())>0)throw error(409,"AUTO_ACTIVE");if(w.revision()!=expectedRevision)throw error(409,"STALE_STATE");if(System.currentTimeMillis()-w.lastSpin()<cooldown)throw error(429,"TOO_FAST");return executeLocked(u,w,requestId,bet,null);}
  // Called only with the wallet row locked inside the caller's transaction.
  SpinResult executeLocked(Accounts.User u,Wallet w,String requestId,long bet,String runId){
-  u=accounts.user(u.id());accounts.requireGame(u);if(!u.enabled())throw Accounts.unauthorized();if(!GameEngine.BETS.contains(bet))throw error(400,"INVALID_BET");boolean free=w.freeSpins()>0;
+  u=accounts.user(u.id());accounts.requireGame(u);if(!u.enabled())throw Accounts.unauthorized();if(!GameEngine.validBet(bet))throw error(400,"INVALID_BET");boolean free=w.freeSpins()>0;
   if(free&&bet!=w.lockedBetCents())throw error(409,"BET_LOCKED");if(!free&&w.balanceCents()<bet)throw error(409,"INSUFFICIENT_FUNDS");
   String profile=free?db.queryForObject("SELECT bonus_profile FROM "+table("wallets")+" WHERE player_id=?",String.class,u.id()):activeProfile();if(profile==null)profile="LEGACY";var outcome=new GameEngine(RNG::nextInt,profile).spin(bet);long balance=Math.addExact(w.balanceCents()-(free?0:bet),outcome.winCents());int remaining=w.freeSpins()-(free?1:0)+outcome.freeAward();long locked=remaining>0?bet:0,now=System.currentTimeMillis();
   db.update("UPDATE "+table("wallets")+" SET bonus_profile=? WHERE player_id=?",remaining>0?profile:null,u.id());
@@ -39,7 +39,7 @@ public class GameService {
   db.update("UPDATE "+table("wallets")+" SET balance=?,free_spins=?,locked_bet=?,revision=?,last_spin=? WHERE player_id=?",balance,remaining,locked,result.revision(),now,u.id());
   var agent=u.role()==Accounts.Role.AGENT?u:(u.role()==Accounts.Role.PLAYER&&u.parentId()!=null?accounts.user(u.parentId()):null);db.update("INSERT INTO "+table("round_ledger")+"(player_id,request_id,agent_id,super_agent_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,run_id,response_json,created_at,rtp_profile) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",u.id(),requestId,agent==null?null:agent.id(),u.role()==Accounts.Role.SUPER_AGENT?u.id():(agent==null?null:agent.parentId()),bet,free?0:bet,outcome.winCents(),free,result.revision(),runId,encode(result),now,profile);return result;
  }
- SpinResult saved(String id,String requestId){return db.query("SELECT response_json FROM "+table("round_ledger")+" WHERE player_id=? AND request_id=?",(r,n)->decode(r.getString(1),SpinResult.class),id,requestId).stream().findFirst().orElse(null);}
+ SpinResult saved(String id,String requestId){return db.query("SELECT response_json,game_type FROM "+table("round_ledger")+" WHERE player_id=? AND request_id=?",(r,n)->{if(!r.getString(2).equals("SUPER_ACE"))throw error(409,"REQUEST_REUSED");return decode(r.getString(1),SpinResult.class);},id,requestId).stream().findFirst().orElse(null);}
  String encode(Object value){try{return json.writeValueAsString(value);}catch(Exception e){throw new IllegalStateException(e);}}
  <T>T decode(String value,Class<T> type){try{return json.readValue(value,type);}catch(Exception e){throw new IllegalStateException(e);}}
 }

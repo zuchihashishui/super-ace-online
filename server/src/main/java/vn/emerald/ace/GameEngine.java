@@ -6,7 +6,8 @@ import java.util.function.IntUnaryOperator;
 
 /** Pure server-side mathematics. Amounts are integer hundredths of a virtual coin. */
 public class GameEngine {
- public static final List<Long> BETS=List.of(1000L,2000L,5000L,10000L,20000L,50000L);
+ public static final long MIN_BET=500L,MAX_BET=50000L;
+ public static boolean validBet(long bet){return bet>=MIN_BET&&bet<=MAX_BET;}
  private static final String[] SYMBOLS={"A","K","Q","J","10","9","8","7","W","S"};
  private static final int[] WEIGHTS={8,10,12,14,16,18,20,22,1,3};
  private static final int[] PAY={3400,2125,2125,1275,1275,850,680,510};
@@ -14,7 +15,7 @@ public class GameEngine {
  private final IntUnaryOperator random;
  private double payoutScale=1;
  public GameEngine(IntUnaryOperator random,String profile){this(random);payoutScale=scaleFor(profile);}
- public static double scaleFor(String profile){if(profile.matches("RTP_[0-9]{3,5}")){int bps=Integer.parseInt(profile.substring(4));if(bps<100||bps>10000)throw new IllegalArgumentException("Invalid RTP");return (bps/10000.0)/0.96712357778;}return switch(profile){case "CLUB_97","INTRO_97"->0.97/0.96712357778;case "LOBBY_98"->0.98/0.96712357778;case "STANDARD_96"->0.96/0.96712357778;case "LEGACY"->1;default->throw new IllegalArgumentException("Unknown RTP profile");};}
+ public static double scaleFor(String profile){if(profile.matches("RTP_[0-9]{3,5}")){int bps=Integer.parseInt(profile.substring(4));if(bps<100||bps>10000)throw new IllegalArgumentException("Invalid RTP");return (bps/10000.0)/0.99315698487;}return switch(profile){case "CLUB_97","INTRO_97"->0.97/0.99315698487;case "LOBBY_98"->0.98/0.99315698487;case "STANDARD_96"->0.96/0.99315698487;case "LEGACY"->1;default->throw new IllegalArgumentException("Unknown RTP profile");};}
  public GameEngine(String profile){this(new SecureRandom()::nextInt,profile);}
  public GameEngine(){SecureRandom secure=new SecureRandom();random=secure::nextInt;}
  public GameEngine(IntUnaryOperator random){this.random=random;}
@@ -33,9 +34,9 @@ public class GameEngine {
  }
  public Outcome spin(long bet){return spin(bet,board());}
  public Outcome spin(long bet,String[][] first){
-  if(!BETS.contains(bet))throw new IllegalArgumentException("Invalid bet");
+  if(!validBet(bet))throw new IllegalArgumentException("Invalid bet");
   String[][] grid=copy(first),initial=copy(first);int scatter=0;for(String[] col:grid)for(String s:col)if(s.equals("S"))scatter++;
-  int award=scatter>=3?8:0;long total=0;List<Cascade> steps=new ArrayList<>();
+  int award=scatter>=3?10:0;long total=0;List<Cascade> steps=new ArrayList<>();
   for(int count=0;count<1000;count++){
    Evaluation e=evaluate(grid);if(e.hits().isEmpty())return new Outcome(initial,List.copyOf(steps),copy(grid),award,total);
    int multiplier=MULTIPLIERS[Math.min(count,3)];long raw=Math.multiplyExact(Math.multiplyExact(bet,e.units()),multiplier);long win=Math.round(raw*payoutScale/10000.0);total=Math.addExact(total,win);

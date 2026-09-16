@@ -34,24 +34,29 @@ const baseErrorText=errorText;errorText=e=>e.code==='MOVE_CHILDREN_FIRST'?t('Mov
 const originalAccounts=loadAccounts;loadAccounts=async()=>{await originalAccounts();table('accountsTable',['ID','Username','Display name','Role','Parent account','Actions'],accountRows.filter(a=>player.role==='CREATOR'||a.id!==player.id).map(a=>[esc(a.publicCode),esc(a.username),esc(a.displayName),esc(a.role),esc(accountRows.find(p=>p.id===a.parentId)?.publicCode||'—'),a.id!==player.id&&['CREATOR','SUPER_AGENT'].includes(player.role)&&(player.role==='CREATOR'||roles.indexOf(a.role)>1)?'<button data-edit="'+a.id+'">'+esc(t('Edit'))+'</button>':'—']));$('accountsTable').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{editing=accountRows.find(a=>a.id===b.dataset.edit);$('editRole').innerHTML=roles.filter((r,i)=>player.role==='CREATOR'||i>1).map(r=>'<option value="'+r+'">'+esc(r.replaceAll('_',' '))+'</option>').join('');$('editRole').value=editing.role;$('editEnabled').checked=editing.enabled;editParents();editor.showModal()});$('chipTarget').innerHTML=accountRows.filter(a=>a.id!==player.id&&a.enabled).map(a=>'<option value="'+a.id+'">'+esc(a.publicCode+' · '+a.displayName)+'</option>').join('');const issue=$('chipDirection').querySelector('[value="ISSUE"]');if(player.role==='CREATOR'&&!issue){const option=document.createElement('option');option.value='ISSUE';option.dataset.i18n='Issue chips (Creator)';option.textContent=t(option.dataset.i18n);$('chipDirection').append(option)}else if(player.role!=='CREATOR')issue?.remove();};
 Object.assign(filipino,{'RTP settings':'Mga setting ng RTP','Target RTP (%)':'Target na RTP (%)','Save RTP':'I-save ang RTP','Use 1–100%, with up to two decimal places. Changes apply to new paid spins. Existing free spins keep their original rate.':'Gumamit ng 1–100%, hanggang dalawang decimal. Sa mga bagong bayad na ikot lamang ang pagbabago. Hindi magbabago ang kasalukuyang libreng ikot.','RTP saved.':'Na-save ang RTP.','Enter an RTP from 1 to 100 with at most two decimals.':'Ilagay ang RTP mula 1 hanggang 100 na may hanggang dalawang decimal.'});
 const rtpPanel=document.createElement('section');rtpPanel.className='panel';rtpPanel.hidden=true;rtpPanel.dataset.creator='';
-rtpPanel.innerHTML='<h2 data-i18n="RTP settings">RTP settings</h2><p id="rtpInfo" class="muted" role="status"></p><form id="rtpForm" class="form-grid"><label><span data-i18n="Target RTP (%)">Target RTP (%)</span><input id="rtpTarget" name="targetPercent" type="number" min="1" max="100" step="0.01" inputmode="decimal" required></label><button type="submit" data-i18n="Save RTP">Save RTP</button></form><p data-i18n="Use 1–100%, with up to two decimal places. Changes apply to new paid spins. Existing free spins keep their original rate.">Use 1–100%, with up to two decimal places. Changes apply to new paid spins. Existing free spins keep their original rate.</p>';
+rtpPanel.innerHTML='<h2>Super Ace · <span data-i18n="RTP settings">RTP settings</span></h2><div class="rtp-settings-grid">'+['LOBBY','CLUB'].map(mode=>{const suffix=mode==='LOBBY'?'':'Club';return '<section class="rtp-setting-card"><h3>'+ (mode==='LOBBY'?'LOBBY · Gold':'LUCKY SEVEN · Club chips')+'</h3><p id="rtpInfo'+suffix+'" class="muted" role="status"></p><form id="rtpForm'+suffix+'" class="form-grid"><label><span data-i18n="Target RTP (%)">Target RTP (%)</span><input id="rtpTarget'+suffix+'" name="targetPercent" type="number" min="1" max="100" step="0.01" inputmode="decimal" required></label><button type="submit" data-i18n="Save RTP">Save RTP</button></form></section>';}).join('')+'</div><p data-i18n="Use 1–100%, with up to two decimal places. Changes apply to new paid spins. Existing free spins keep their original rate.">Use 1–100%, with up to two decimal places. Changes apply to new paid spins. Existing free spins keep their original rate.</p>';
 $('gameView').append(rtpPanel);
-const rtpInfo=$('rtpInfo');let rtpLoaded=null,rtpSaving=false;
-function rtpVisibility(){const allowed=player?.role==='CREATOR';rtpPanel.hidden=!allowed;if(!allowed){rtpLoaded=null;rtpInfo.textContent='';$('rtpTarget').value='';}return allowed;}
-async function loadRtp(){
+let rtpLoaded=null,rtpSaving=false;
+const rtpStates={LOBBY:{value:null,sequence:0},CLUB:{value:null,sequence:0}};
+const rtpElement=(id,mode)=>$(id+(mode==='LOBBY'?'':'Club'));
+function rtpButtons(){for(const mode of ['LOBBY','CLUB'])rtpElement('rtpForm',mode).querySelector('button').disabled=rtpSaving||!rtpStates[mode].value;}
+function rtpVisibility(){const allowed=player?.role==='CREATOR';rtpPanel.hidden=!allowed;if(!allowed){rtpLoaded=null;for(const mode of ['LOBBY','CLUB']){rtpStates[mode].value=null;rtpStates[mode].sequence++;rtpElement('rtpInfo',mode).textContent='';rtpElement('rtpTarget',mode).value='';}rtpButtons();}return allowed;}
+async function loadRtp(mode){
  if(!rtpVisibility())return;
- const owner=player.id,requestedMode=gameMode;
- rtpLoaded=null;$('rtpForm').querySelector('button').disabled=true;
+ if(!mode)return Promise.all(['LOBBY','CLUB'].map(loadRtp));
+ const owner=player.id,state=rtpStates[mode],sequence=++state.sequence;
+ state.value=null;if(mode==='LOBBY')rtpLoaded=null;rtpButtons();
  try{
-  const r=await api('rtp');if(owner!==player?.id||player?.role!=='CREATOR'||requestedMode!==gameMode)return;
-  rtpLoaded=r;$('rtpTarget').value=r.targetPercent;
-  rtpInfo.textContent=t('RTP target')+': '+r.targetPercent+'% · '+r.mode+' · '+t('Observed RTP')+': '+(r.observedPercent==null?'—':r.observedPercent.toFixed(2)+'%');
- }catch(error){if(owner===player?.id&&requestedMode===gameMode)rtpInfo.textContent=errorText(error);}
- finally{$('rtpForm').querySelector('button').disabled=rtpSaving||!rtpLoaded;}
+  const r=await api('rtp?mode='+mode);if(owner!==player?.id||player?.role!=='CREATOR'||sequence!==state.sequence)return;
+  state.value=r;if(mode==='LOBBY')rtpLoaded=r;rtpElement('rtpTarget',mode).value=r.targetPercent;
+  rtpElement('rtpInfo',mode).textContent=t('RTP target')+': '+r.targetPercent+'% · '+t('Observed RTP')+': '+(r.observedPercent==null?'—':r.observedPercent.toFixed(2)+'%');
+ }catch(error){if(owner===player?.id&&sequence===state.sequence)rtpElement('rtpInfo',mode).textContent=errorText(error);}
+ finally{rtpButtons();}
 }
-$('rtpForm').onsubmit=e=>{e.preventDefault();if(rtpSaving||!rtpLoaded||rtpLoaded.mode!==gameMode||player?.role!=='CREATOR')return;
- const owner=player.id,revision=rtpLoaded.revision,targetPercent=Number($('rtpTarget').value);rtpSaving=true;$('rtpForm').querySelector('button').disabled=true;
- void task(async()=>{try{await api('rtp','PUT',{targetPercent,revision});const wallet=await api('me');if(player?.id===owner){applyWallet(wallet);toast(t('RTP saved.'));}}finally{rtpSaving=false;await loadRtp();}});
+for(const mode of ['LOBBY','CLUB'])rtpElement('rtpForm',mode).onsubmit=e=>{
+ e.preventDefault();const state=rtpStates[mode];if(rtpSaving||!state.value||player?.role!=='CREATOR')return;
+ const owner=player.id,revision=state.value.revision,targetPercent=Number(rtpElement('rtpTarget',mode).value);rtpSaving=true;rtpButtons();
+ void task(async()=>{try{await api('rtp?mode='+mode,'PUT',{targetPercent,revision});const wallet=await api('me');if(player?.id===owner){applyWallet(wallet);toast(mode+' · '+t('RTP saved.'));}}finally{rtpSaving=false;if(player?.id===owner)await loadRtp(mode);rtpButtons();}});
 };
 const rtpRoleBase=applyRole;applyRole=()=>{rtpRoleBase();if(rtpVisibility())void loadRtp();};
 const rtpErrorBase=errorText;errorText=e=>e.code==='INVALID_RTP'?t('Enter an RTP from 1 to 100 with at most two decimals.'):rtpErrorBase(e);

@@ -5,7 +5,10 @@
 - Existing balances are preserved. Management accounts with zero Gold/chips
   still need sufficient funds for paid play; this update does not mint currency.
 - Only Creator can access GET/PUT /api/rtp and the RTP settings panel in Game.
-  Choose Lobby or Club, edit Target RTP (%) and press Save RTP. Non-Creators
+  The Game page has separate Lobby/Gold and Club/chips settings cards, each
+  with its own target, observed statistics and Save button. Both can be edited
+  regardless of the currently selected play mode. Saving one leaves the other
+  unchanged. Non-Creators
   receive 403 from these endpoints; guests receive 401. Public RTP labels and
   obsolete scheduled-RTP text were removed from the UI.
 - Both modes default to 97.00%. Settings accept 1.00–100.00% with up to two

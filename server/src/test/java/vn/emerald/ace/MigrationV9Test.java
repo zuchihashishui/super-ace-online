@@ -21,8 +21,9 @@ class MigrationV9Test {
   assertEquals("unchanged-hash",db.queryForObject("SELECT password_hash FROM accounts WHERE id='c'",String.class));
   assertEquals("a",db.queryForObject("SELECT parent_id FROM accounts WHERE id='p'",String.class));
   assertEquals("a",db.queryForObject("SELECT agent_id FROM round_ledger WHERE request_id='old'",String.class));
+  assertEquals("SUPER_ACE",db.queryForObject("SELECT game_type FROM round_ledger WHERE request_id='old'",String.class));
   assertEquals("CLUB_97",db.queryForObject("SELECT rtp_profile FROM round_ledger WHERE request_id='old'",String.class));
-  assertEquals(2,db.queryForObject("SELECT COUNT(*) FROM rtp_settings WHERE target_bps=9700",Integer.class));
+  assertEquals(2,db.queryForObject("SELECT COUNT(*) FROM rtp_settings WHERE (mode='LOBBY' AND target_bps=10000) OR (mode='CLUB' AND target_bps=9750)",Integer.class));
   db.update("UPDATE accounts SET parent_id=NULL WHERE id='p'");
   assertEquals("00000000-0000-0000-0000-000000686868",db.queryForObject("SELECT club_id FROM accounts WHERE id='p'",String.class));
   db.update("INSERT INTO round_ledger(player_id,request_id,agent_id,super_agent_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,response_json,created_at,rtp_profile) VALUES('p','new',NULL,NULL,2000,2000,0,FALSE,2,'{}',2,'RTP_9700')");

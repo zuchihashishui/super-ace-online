@@ -10,3 +10,6 @@ body[data-theme=classic] .heading{background:linear-gradient(90deg,transparent,#
 .app-nav .register-cta{background:linear-gradient(135deg,#ffe8a0,#d59e36);color:#241708;border-color:#f7ce70;font-weight:800;box-shadow:0 3px 15px #d6a13e33;flex-shrink:0}.app-nav .register-cta:hover{filter:brightness(1.08)}
 
 #registerError:empty{display:none}#registerError{white-space:normal;line-height:1.5}#registerForm [aria-invalid="true"]{border-color:#ef8181;outline:1px solid #ef8181}
+
+/* Independent Creator settings for the two currencies. */
+.rtp-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}.rtp-setting-card{padding:18px;border:1px solid var(--line);border-radius:14px;min-width:0;background:#0002}.rtp-setting-card h3{margin:0 0 12px;color:var(--gold);font-size:16px}.rtp-setting-card .form-grid{grid-template-columns:1fr;padding:0}.rtp-setting-card button{border-radius:9px;border:1px solid var(--gold);background:var(--panel,#14362f);padding:12px}

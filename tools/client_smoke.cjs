@@ -37,7 +37,7 @@ function value(s){return w.eval(s)}
  await value("showView('gameView')");await value("syncAuto(false)");
  // Stop polling, start server job, then close DOM entirely. A second client checks server progress.
  value('clearTimeout(pollTimer)');await wait(()=>!value('polling')&&!value('busy'),'idle');
- const csrf=value('player.csrf'),rev=value('revision'),bet=value('free>0?player.lockedBetCents:bets[betIndex]*100');
+ const csrf=value('player.csrf'),rev=value('revision'),bet=value('free>0?player.lockedBetCents:betAmount*100');
  const api=async(p,data)=>{const r=await fetch(base+'/api/'+p,{method:data?'POST':'GET',headers:{Cookie:cookie,'Content-Type':'application/json','X-Game-Client':'web','X-CSRF-Token':csrf},...(data?{body:JSON.stringify(data)}:{})});assert.ok(r.ok,p+' '+r.status);return r.json()};
  const job=await api('auto/start',{runId:crypto.randomUUID(),count:10,betCents:bet,expectedRevision:rev,turbo:true});
  const clientCookie=cookie;w.close();await sleep(6500);const state=await api('auto');assert.ok(state.wallet.revision>rev);assert.ok(state.job.completed+state.job.freeCompleted>=1);await api('auto/stop',{runId:job.runId});

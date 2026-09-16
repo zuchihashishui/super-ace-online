@@ -8,7 +8,7 @@ Object.assign(filipino,{
 });
 function modeUI(){
  if(!$('chooseLobby'))return;
- const locked=rtpSaving||modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
+ const locked=(typeof dtLocked==='function'&&dtLocked())||rtpSaving||modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
  const lobby=gameMode==='LOBBY';
  $('chooseClub').querySelector('b').textContent='LUCKY SEVEN';
  $('chooseClub').querySelector('small').textContent='CLUB · 686868';
@@ -22,6 +22,7 @@ function modeUI(){
  document.body.dataset.playMode=gameMode;
 }
 async function switchMode(next){
+ if(typeof dtLocked==='function'&&dtLocked())return;
  if(!['LOBBY','CLUB'].includes(next)||next===gameMode||rtpSaving||modeChanging||busy||polling||pending||autoActive()||free>0)return;
  if(player&&!canPlay())return;
  const previous=gameMode;modeChanging=true;gameMode=next;update();
@@ -34,7 +35,7 @@ async function switchMode(next){
   $('status').textContent=gameMode==='LOBBY'?'LOBBY · Gold':'LUCKY SEVEN · 686868 · chips';
  }catch(error){gameMode=previous;toast(errorText(error));}
  finally{modeChanging=false;update();}
- await loadRtp();await syncAuto(false);
+ await loadRtp();await syncAuto(false);if(typeof dtLoad==='function'&&activeView==='dragonTigerView')await dtLoad();
 }
 $('chooseLobby').onclick=()=>switchMode('LOBBY');$('chooseClub').onclick=()=>switchMode('CLUB');
 // Migrate a pending request from the one-wallet release into CLUB only.

@@ -1,4 +1,4 @@
-# Database schema V6 — LUCKY SEVEN
+# Database schema V11 — LUCKY SEVEN
 
 `super_ace.sql` contains the complete MySQL 8+ database schema, indexes, constraints,
 LUCKY SEVEN club (public ID 686868), initial management hierarchy, wallets and
@@ -20,8 +20,7 @@ Fresh installation creates these four accounts, all using password **112357** an
 | `zuchiha3` | Player | zuchiha2 |
 
 The Player starts with 10,000 Lobby Gold and 0 Club chips.
-System management groups do not have usable login passwords. Sign in as Creator
-to create actual Agents/Super Agents, move players and issue Club chips.
+All four seeded accounts can sign in. Creator can create accounts, move players and issue Club chips.
 
 For an existing installation, normally restart the new server and let Flyway
 apply missing migrations. Existing usernames, passwords and balances are retained.
@@ -33,9 +32,8 @@ For a manual upgrade, stop the server, back up MySQL and check the installed ver
 SELECT version, description, success FROM ace.flyway_schema_history ORDER BY installed_rank;
 ```
 
-- Latest version 4: import `upgrade_v4_to_v6.sql`.
-- Latest version 5: import `upgrade_v5_to_v6.sql`.
-- Latest version 6: no upgrade is needed.
+- Latest version 4–10: import the matching `upgrade_vN_to_v11.sql`.
+- Latest version 11: no upgrade is needed.
 - Other versions: use the server's Flyway migration path.
 
 Do not import the fresh-install file over existing tables or run a manual upgrade
@@ -51,3 +49,7 @@ For subsequent versions, add a new Flyway migration and run
 `python3 tools/generate_database_sql.py`; update the generator's version label and
 supported upgrade ranges when increasing the schema version. Never edit a migration
 already applied to users' databases.
+
+V10 labels existing ledger rows as SUPER_ACE and adds indexes for Dragon Tiger history. Wallets, passwords and earlier Flyway migrations are unchanged. Historical upgrade files remain for earlier releases; use a file ending in _to_v11.sql for this release.
+
+V11 changes untouched Super Ace RTP defaults to Lobby 100% and Club 97.5%. Creator-saved settings, wallet balances and active bonus profiles are preserved.

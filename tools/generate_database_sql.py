@@ -12,9 +12,9 @@ def history(p):
     for line in p.read_text(encoding='utf-8-sig').splitlines():checksum=zlib.crc32(line.encode(),checksum)
     if checksum>=2**31:checksum-=2**32
     return f"INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES({version},{quote(version)},{quote(description.replace('_',' '))},'SQL',{quote(p.name)},{checksum},CURRENT_USER(),0,1);\n"
-header="""-- Super Ace database schema V9 (MySQL 8+)
+header="""-- Super Ace database schema V11 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
--- For existing V4/V5 databases use the matching upgrade file, OR simply start the new server.
+-- For existing V4–V10 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
 CREATE DATABASE IF NOT EXISTS ace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ace;
@@ -40,7 +40,7 @@ INSERT INTO direct_registration(id,agent_id,super_agent_id) VALUES(1,'00000000-0
 UPDATE clubs SET owner_id='00000000-0000-0000-0000-000000000001',created_at=ROUND(UNIX_TIMESTAMP(CURRENT_TIMESTAMP(3))*1000) WHERE public_code='686868';
 """
 (directory/'super_ace.sql').write_text(header+'\n'.join('-- '+p.name+'\n'+p.read_text() for p in migrations)+'\n'+seed+'\n'+tracker+''.join(history(p) for p in migrations))
-for start in (4,5,6,7,8):
+for start in (4,5,6,7,8,9,10):
     selected=[p for p in migrations if int(p.name.split('__')[0][1:])>start]
-    (directory/f'upgrade_v{start}_to_v9.sql').write_text(f'-- ONLY for schema V{start}. Stop the server before importing. Back up the database first.\n-- Do not run if Flyway already applied these versions.\nUSE ace;\n'+''.join('\n-- '+p.name+'\n'+p.read_text()+'\n'+history(p) for p in selected))
-print('Generated full MySQL install and V4/V5/V6/V7/V8 upgrades at schema V9.')
+    (directory/f'upgrade_v{start}_to_v11.sql').write_text(f'-- ONLY for schema V{start}. Stop the server before importing. Back up the database first.\n-- Do not run if Flyway already applied these versions.\nUSE ace;\n'+''.join('\n-- '+p.name+'\n'+p.read_text()+'\n'+history(p) for p in selected))
+print('Generated full MySQL install and V4–V10 upgrades at schema V11.')

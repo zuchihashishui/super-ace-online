@@ -1,6 +1,6 @@
--- Super Ace database schema V9 (MySQL 8+)
+-- Super Ace database schema V11 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
--- For existing V4/V5 databases use the matching upgrade file, OR simply start the new server.
+-- For existing V4–V10 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
 CREATE DATABASE IF NOT EXISTS ace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ace;
@@ -189,6 +189,19 @@ CREATE TABLE rtp_settings (
 );
 INSERT INTO rtp_settings(mode,target_bps) VALUES('LOBBY',9700),('CLUB',9700);
 
+-- V10__dragon_tiger.sql
+ALTER TABLE round_ledger ADD COLUMN game_type VARCHAR(20) NOT NULL DEFAULT 'SUPER_ACE';
+ALTER TABLE lobby_round_ledger ADD COLUMN game_type VARCHAR(20) NOT NULL DEFAULT 'SUPER_ACE';
+CREATE INDEX ledger_game_player ON round_ledger(player_id,game_type,wallet_revision);
+CREATE INDEX lobby_ledger_game_player ON lobby_round_ledger(player_id,game_type,wallet_revision);
+
+-- V11__super_ace_rtp_defaults.sql
+-- Change untouched defaults only; preserve settings explicitly saved by Creator.
+UPDATE rtp_settings SET target_bps=10000,revision=revision+1
+ WHERE mode='LOBBY' AND target_bps=9700 AND revision=0;
+UPDATE rtp_settings SET target_bps=9750,revision=revision+1
+ WHERE mode='CLUB' AND target_bps=9700 AND revision=0;
+
 
 -- Club and management seed. All four default accounts use password 112357.
 INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
@@ -217,3 +230,5 @@ INSERT INTO flyway_schema_history(installed_rank,version,description,type,script
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(7,'7','agent join requests','SQL','V7__agent_join_requests.sql',85909202,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(8,'8','unassigned club players','SQL','V8__unassigned_club_players.sql',-101948530,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(9,'9','creator rtp settings','SQL','V9__creator_rtp_settings.sql',135689784,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(10,'10','dragon tiger','SQL','V10__dragon_tiger.sql',1445817963,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(11,'11','super ace rtp defaults','SQL','V11__super_ace_rtp_defaults.sql',594068105,CURRENT_USER(),0,1);

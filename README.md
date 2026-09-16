@@ -1,4 +1,21 @@
-# Current update: Creator RTP settings and Game for all roles, schema V9
+# Current update: Super Ace Scatter awards 10 Free Spins
+
+Three or more Scatter symbols on the initial board now award 10 Free Spins. The payout calibration was updated so Creator RTP targets remain valid. No database migration is required.
+
+# Current update: Super Ace RTP defaults, schema V11
+
+Lobby defaults to 100%; Club defaults to 97.5%. Migration V11 updates untouched defaults only, preserving any Creator-saved settings. Dragon Tiger payouts are unchanged. Run start.bat to apply the migration automatically.
+
+## Previous update: Dragon Tiger (two-card variant), schema V10
+
+See [DRAGON-TIGER.md](DRAGON-TIGER.md) for rules, payouts, integration and tests.
+The Game menu now offers Super Ace and Dragon Tiger, for all four roles.
+Both use the existing separate Lobby Gold and Club chip wallets.
+Dragon Tiger has fixed payouts; Creator RTP settings apply only to Super Ace.
+Start the new server to apply migration V10 automatically. Preserve your external configuration.
+The release filename remains unchanged for compatibility with start.bat.
+
+## Previous update: Creator RTP settings, schema V9
 
 Windows: start.bat and start-local.bat read the external
 `server/src/main/resources/application.properties` directly, without loading
@@ -6,7 +23,7 @@ dotenv files. Local MySQL defaults are root / 123456.
 See [WINDOWS-CONFIG.md](WINDOWS-CONFIG.md) for details.
 
 See [UPDATE-V9.md](UPDATE-V9.md). All four roles can play Lobby and Club.
-Only Creator can read/edit RTP settings. Both modes default to 97%, with
+Only Creator can read/edit RTP settings. Defaults are now Lobby 100% / Club 97.5%, with
 independent settings supporting two decimal places. V8 Agent removal and
 approval changes are included. See BACKEND-TEST-RESULTS.md for validation.
 
