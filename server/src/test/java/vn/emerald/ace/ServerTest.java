@@ -34,6 +34,35 @@ class ServerTest {
   dailyGold.grant(u.id(),day);assertEquals(before+1000000,lobby.wallet(u.id(),false).balanceCents());
   dailyGold.grant(u.id(),day.plusDays(1));assertEquals(before+2000000,lobby.wallet(u.id(),false).balanceCents());assertEquals(1,chipNotices.unread(u).size());
  }
+ @Autowired ColorGameService colorGame;
+ @Test void colorGameMultipleBetsStayHiddenAndSettleExactlyOnce() throws Exception {
+  var u=tree().player();var v=tree().player();long round=bettingRound();
+  var o=colorGame.shared(round);
+  long expected=ColorGameEngine.payout(500,ColorGameEngine.Side.RED,o)+ColorGameEngine.payout(1000,ColorGameEngine.Side.BLUE,o)+ColorGameEngine.payout(500,ColorGameEngine.Side.GREEN,o);
+  long before=lobby.wallet(u.id(),false).balanceCents(),clubBefore=game.wallet(u.id(),false).balanceCents();
+  var red=colorGame.play(u,"LOBBY",round,id(),ColorGameEngine.Side.RED,500,0);
+  var blue=colorGame.play(u,"LOBBY",round,id(),ColorGameEngine.Side.BLUE,1000,1);
+  colorGame.play(u,"LOBBY",round,id(),ColorGameEngine.Side.GREEN,500,2);
+  colorGame.play(v,"LOBBY",round,id(),ColorGameEngine.Side.RED,2000,0);
+  assertNull(red.outcome());assertEquals(0,red.payoutCents());assertEquals(red,colorGame.play(u,"LOBBY",round,red.requestId(),red.side(),500,0));
+  assertEquals(before-2000,lobby.wallet(u.id(),false).balanceCents());assertEquals(clubBefore,game.wallet(u.id(),false).balanceCents());
+  var crowd=colorGame.crowd(u,"LOBBY",round).sides().stream().filter(x->x.side()==ColorGameEngine.Side.RED).findFirst().orElseThrow();assertEquals(500,crowd.ownCents());assertEquals(2000,crowd.othersCents());assertEquals(1,crowd.otherBettors());
+  assertTrue(colorGame.crowd(u,"CLUB",round).sides().stream().allMatch(x->x.ownCents()==0&&x.othersCents()==0));
+  colorGame.settle("LOBBY",u.id(),red.revealAt()-1);assertEquals(before-2000,lobby.wallet(u.id(),false).balanceCents());
+  colorGame.settle("LOBBY",u.id(),red.revealAt());assertEquals(before-2000+expected,lobby.wallet(u.id(),false).balanceCents());
+  colorGame.settle("LOBBY",u.id(),red.revealAt());assertEquals(before-2000+expected,lobby.wallet(u.id(),false).balanceCents());
+  assertEquals(3,colorGame.historyAt(u,"LOBBY",red.revealAt()).size());assertEquals(3,colorGame.tableAt(red.revealAt()).outcome().dice().size());
+  assertThrows(GameService.ApiError.class,()->colorGame.play(u,"LOBBY",round,red.requestId(),ColorGameEngine.Side.BLUE,500,0));
+  assertThrows(GameService.ApiError.class,()->colorGame.play(u,"LOBBY",round-1,id(),red.side(),500,0));
+  assertThrows(GameService.ApiError.class,()->colorGame.crowd(u,"BAD",round));
+  mvc.perform(get("/api/color-game/bets").param("roundId",String.valueOf(round))).andExpect(status().isUnauthorized());
+  String publicPool=mvc.perform(get("/api/color-game/crowd").param("roundId",String.valueOf(round))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();assertFalse(publicPool.contains(u.id()));assertFalse(publicPool.contains("dice"));
+ }
+ @Test void colorGameLedgerCannotBeReusedAsOtherGame(){
+  var u=tree().player();long round=bettingRound();var row=colorGame.play(u,"LOBBY",round,id(),ColorGameEngine.Side.YELLOW,500,0);
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"LOBBY",round,row.requestId(),DragonTigerEngine.Side.DRAGON,500,1));
+  assertThrows(GameService.ApiError.class,()->colorGame.play(u,"CLUB",round,id(),ColorGameEngine.Side.YELLOW,500,123));
+ }
  @Autowired DragonTigerService dragonTiger;
  @Test void legacyUnsettledRoundKeepsTwoCardsAndNewRoundsUseOne(){
   var u=tree().player();long round=123456L,close=round*DragonTigerService.CYCLE_MS+DragonTigerService.BETTING_MS;

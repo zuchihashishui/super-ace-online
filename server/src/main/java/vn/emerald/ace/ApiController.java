@@ -88,5 +88,14 @@ public class ApiController {
  @GetMapping("/dragon-tiger/bets") public List<DragonTigerService.Round> dragonTigerBets(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@RequestParam long roundId){return dragonTiger.bets(auth(r).user(),mode,roundId);}
  @PostMapping("/dragon-tiger/rounds") public DragonTigerService.Round dragonTiger(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody DragonTigerRequest b){return dragonTiger.play(auth(r).user(),mode,b.tableRoundId(),b.requestId().toString(),b.side(),b.betCents(),b.expectedRevision());}
  @GetMapping("/dragon-tiger/rounds") public List<DragonTigerService.Round> dragonTigerHistory(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode){return dragonTiger.history(auth(r).user(),mode);}
+ @org.springframework.beans.factory.annotation.Autowired ColorGameService colorGame;
+ public record ColorGameRequest(@NotNull UUID requestId,@PositiveOrZero long tableRoundId,@NotNull ColorGameEngine.Side side,@Positive long betCents,@PositiveOrZero long expectedRevision){}
+ @GetMapping("/color-game/table") public ColorGameService.Table colorGameTable(){return colorGame.table();}
+ @GetMapping("/color-game/crowd") public ColorGameService.Crowd colorGameCrowd(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@RequestParam long roundId){return colorGame.crowd(cookie(r)==null?null:auth(r).user(),mode,roundId);}
+ @GetMapping("/color-game/table/history") public List<ColorGameService.TableResult> colorGameTableHistory(){return colorGame.tableHistory();}
+ @GetMapping("/color-game/bets") public List<ColorGameService.Round> colorGameBets(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@RequestParam long roundId){return colorGame.bets(auth(r).user(),mode,roundId);}
+ @PostMapping("/color-game/rounds") public ColorGameService.Round colorGame(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody ColorGameRequest b){return colorGame.play(auth(r).user(),mode,b.tableRoundId(),b.requestId().toString(),b.side(),b.betCents(),b.expectedRevision());}
+ @GetMapping("/color-game/rounds") public List<ColorGameService.Round> colorGameHistory(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode){return colorGame.history(auth(r).user(),mode);}
+ @GetMapping("/color-game/winners") public List<ColorGameService.Winner> colorWinners(@RequestParam(defaultValue="LOBBY")String mode){return colorGame.winners(mode);}
  @GetMapping("/health") public ResponseEntity<?> health(){boolean ready=game.db().queryForObject("SELECT COUNT(*) FROM accounts WHERE role='CREATOR'",Integer.class)>0;return ResponseEntity.status(ready?200:503).body(Map.of("status",ready?"up":"starting","version","13.0.0"));}
 }

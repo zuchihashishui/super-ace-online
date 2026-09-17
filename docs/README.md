@@ -17,3 +17,5 @@ All user and technical guides are in `docs/guides/`.
 - [Daily Lobby Gold — V15](guides/DAILY-LOBBY-GOLD.md)
 
 - [Dragon Tiger Jade / one-card rules — V16](guides/DRAGON-TIGER-JADE.md)
+
+- [Color Game — V17](guides/COLOR-GAME.md)

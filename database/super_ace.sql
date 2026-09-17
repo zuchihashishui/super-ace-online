@@ -1,6 +1,6 @@
--- Super Ace database schema V15 (MySQL 8+)
+-- Super Ace database schema V16 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
--- For existing V4–V14 databases use the matching upgrade file, OR simply start the new server.
+-- For existing V4–V15 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
 CREATE DATABASE IF NOT EXISTS ace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ace;
@@ -245,6 +245,20 @@ CREATE TABLE lobby_daily_rewards (
 );
 CREATE INDEX lobby_daily_rewards_unread ON lobby_daily_rewards(player_id,read_at,created_at);
 
+-- V16__color_game.sql
+CREATE TABLE color_game_rounds (
+ round_id BIGINT PRIMARY KEY,
+ starts_at BIGINT NOT NULL,
+ betting_closes_at BIGINT NOT NULL,
+ reveal_ends_at BIGINT NOT NULL,
+ outcome_json LONGTEXT NOT NULL
+);
+CREATE INDEX color_game_round_expiry ON color_game_rounds(reveal_ends_at);
+ALTER TABLE round_ledger ADD COLUMN cg_settled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE lobby_round_ledger ADD COLUMN cg_settled BOOLEAN NOT NULL DEFAULT TRUE;
+CREATE INDEX ledger_color_pending ON round_ledger(cg_settled,game_round_id);
+CREATE INDEX lobby_color_pending ON lobby_round_ledger(cg_settled,game_round_id);
+
 
 -- Club and management seed. All four default accounts use password 112357.
 INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
@@ -279,3 +293,4 @@ INSERT INTO flyway_schema_history(installed_rank,version,description,type,script
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(13,'13','dragon tiger multiple bets','SQL','V13__dragon_tiger_multiple_bets.sql',-2052350647,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(14,'14','dragon tiger table totals','SQL','V14__dragon_tiger_table_totals.sql',-854339490,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(15,'15','daily lobby gold','SQL','V15__daily_lobby_gold.sql',-972351333,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(16,'16','color game','SQL','V16__color_game.sql',-1735832447,CURRENT_USER(),0,1);

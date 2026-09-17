@@ -1,4 +1,4 @@
-# Current update: Dragon Tiger chip stacks and multiplayer totals, schema V15
+# Current update: Dragon Tiger chip stacks and multiplayer totals, schema V16
 
 Chip denominations now stack visually on each side with exact counts and amounts. Other players' confirmed stakes appear separately, excluding the current player and keeping Lobby/Club separate. Responsive controls sit directly above betting areas without hiding totals. See [multiplayer notes](docs/guides/DRAGON-TIGER-MULTIPLAYER.md). Flyway applies V14 indexes automatically.
 
@@ -68,3 +68,5 @@ Game độc lập dùng chip ảo, lấy cảm hứng từ Super Ace. Không ph�
 Daily Lobby reward: every account receives 10,000 Gold once per Asia/Manila calendar day, with a persistent receipt popup. See docs/guides/DAILY-LOBBY-GOLD.md.
 
 Release V16: Dragon Tiger now deals one card per side (A low, K high) with a Jade temple UI. Database schema remains V15. See docs/guides/DRAGON-TIGER-JADE.md for payout rules and upgrade compatibility.
+
+Release V17 adds Color Game (three dice, six colors), a responsive fiesta table, cumulative chips, shared rounds, history and real daily payout rankings. See docs/guides/COLOR-GAME.md.
