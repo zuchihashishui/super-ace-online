@@ -100,6 +100,12 @@ public class ApiController {
  @GetMapping("/dragon-tiger/bets") public List<DragonTigerService.Round> dragonTigerBets(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@RequestParam long roundId){return dragonTiger.bets(auth(r).user(),mode,roundId);}
  @PostMapping("/dragon-tiger/rounds") public DragonTigerService.Round dragonTiger(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody DragonTigerRequest b){return dragonTiger.play(auth(r).user(),mode,b.tableRoundId(),b.requestId().toString(),b.side(),b.betCents(),b.expectedRevision());}
  @GetMapping("/dragon-tiger/rounds") public List<DragonTigerService.Round> dragonTigerHistory(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode){return dragonTiger.history(auth(r).user(),mode);}
+ @org.springframework.beans.factory.annotation.Autowired philip.emerald.ace.colorgame.ColorJackpotService colorJackpot;
+ @GetMapping("/color-game/jackpot") public Object colorJackpot(@RequestParam(defaultValue="LOBBY")String mode){return colorJackpot.snapshot(mode);}
+ @GetMapping("/color-game/jackpot/awards") public Object colorJackpotAwards(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode){return colorJackpot.awards(auth(r).user(),mode);}
+ @GetMapping("/color-game/jackpot/history") public Object colorJackpotHistory(@RequestParam(defaultValue="LOBBY")String mode){return colorJackpot.history(mode);}
+ public record JackpotTopUp(@NotNull UUID requestId,@Positive long amountCents){}
+ @PostMapping("/color-game/jackpot/top-up") public Object colorJackpotTopUp(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody JackpotTopUp b){return colorJackpot.topUp(auth(r).user(),mode,b.requestId().toString(),b.amountCents());}
  @org.springframework.beans.factory.annotation.Autowired ColorGameService colorGame;
  public record ColorGameRequest(@NotNull UUID requestId,@PositiveOrZero long tableRoundId,@NotNull ColorGameEngine.Side side,@Positive long betCents,@PositiveOrZero long expectedRevision){}
  @GetMapping("/color-game/table") public ColorGameService.Table colorGameTable(){return colorGame.table();}

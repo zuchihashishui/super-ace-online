@@ -1,6 +1,6 @@
-# Database schema V19 — LUCKY SEVEN
+# Database schema V20 — LUCKY SEVEN
 
-V19 adds private Lucky 9 decks and active-hand indexes. V18 added Mines boards. V17 added Crash rounds; V16 added Color Game. Data and balances are preserved. Start the new server to migrate automatically, or use the matching `upgrade_vN_to_v19.sql` with the server stopped.
+V20 adds isolated Color Game Jackpot pools, accepted bets, awards and an audit journal. V19 added private Lucky 9 decks and active-hand indexes. V18 added Mines boards. V17 added Crash rounds; V16 added Color Game. Data and balances are preserved. Start the new server to migrate automatically, or use the matching `upgrade_vN_to_v20.sql` with the server stopped.
 
 `super_ace.sql` contains the complete MySQL 8+ database schema, indexes, constraints,
 LUCKY SEVEN club (public ID 686868), initial management hierarchy, wallets and
@@ -34,8 +34,8 @@ For a manual upgrade, stop the server, back up MySQL and check the installed ver
 SELECT version, description, success FROM ace.flyway_schema_history ORDER BY installed_rank;
 ```
 
-- Latest version 4–18: import the matching `upgrade_vN_to_v19.sql`.
-- Latest version 19: no upgrade is needed.
+- Latest version 4–19: import the matching `upgrade_vN_to_v20.sql`.
+- Latest version 20: no upgrade is needed.
 - Other versions: use the server's Flyway migration path.
 
 Do not import the fresh-install file over existing tables or run a manual upgrade

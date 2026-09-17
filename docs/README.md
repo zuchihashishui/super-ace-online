@@ -1,3 +1,5 @@
+Current: [V35 Lobby Jackpot](guides/V35-COLOR-JACKPOT.md) · [Validation](test-results/V35-VALIDATION.md)
+
 # Project documentation
 
 All user and technical guides are in `docs/guides/`.
@@ -38,3 +40,12 @@ Eleven games: Super Ace, Dragon Tiger, Color Game, Crash, Plinko, Lucky Wheel, S
 - [V29 Plinko frame guards and session recovery](guides/V29-PLINKO-GUARDS.md)
 
 - [V30 Color Game top-face correction](guides/V30-COLOR-TOP-FACE.md)
+
+- [V31 Color Game reference-video presentation](guides/V31-COLOR-VIDEO-STYLE.md)
+
+- [V32 physical 3D Color Game dice](guides/V32-COLOR-3D.md)
+
+- [V33 Color Game reference graphics](guides/V33-COLOR-REFERENCE.md)
+
+- [V34 History and phone landscape](guides/V34-HISTORY-LANDSCAPE.md)
+- [Color Game Jackpot proposal](guides/COLOR-JACKPOT-PROPOSAL.md)

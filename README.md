@@ -1,3 +1,15 @@
+# Current update: V35 Color Game Lobby Jackpot
+
+Lobby Jackpot is now active with a real database pool, server settlement, award receipts and Creator funding. Club Jackpot remains disabled. History and phone landscape from V34 are included. [Rules and upgrade notes](docs/guides/V35-COLOR-JACKPOT.md). Schema: V20.
+
+# Previous update: V34 History and phone landscape
+
+Color Game adds the reference History cabinet and a landscape phone interface. [Release notes](docs/guides/V34-HISTORY-LANDSCAPE.md) · [Jackpot proposal](docs/guides/COLOR-JACKPOT-PROPOSAL.md). Jackpot remains inactive. No database migration.
+
+# Previous update: V33 Color Game reference graphics
+
+Plain colored 3D dice, six wooden-board betting tiles, latest-result History, medal Ranking and an inactive Jackpot display. Existing physical dice motion is preserved. [V33 details and validation](docs/guides/V33-COLOR-REFERENCE.md). Schema remains V19.
+
 # Current update: Dragon Tiger chip stacks and multiplayer totals, schema V16
 
 Chip denominations now stack visually on each side with exact counts and amounts. Other players' confirmed stakes appear separately, excluding the current player and keeping Lobby/Club separate. Responsive controls sit directly above betting areas without hiding totals. See [multiplayer notes](docs/guides/DRAGON-TIGER-MULTIPLAYER.md). Flyway applies V14 indexes automatically.

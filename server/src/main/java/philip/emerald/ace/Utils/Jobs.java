@@ -14,6 +14,8 @@ public class Jobs {
  @org.springframework.beans.factory.annotation.Autowired LobbyAutoService lobbyAuto;
  @org.springframework.beans.factory.annotation.Autowired DragonTigerService dragonTiger;
  @Scheduled(fixedDelay=250,initialDelay=1000) public void dragonTiger(){for(String mode:java.util.List.of("LOBBY","CLUB"))for(String id:dragonTiger.pendingPlayers(mode))try{dragonTiger.settle(mode,id,System.currentTimeMillis());}catch(Exception e){LoggerFactory.getLogger(Jobs.class).error("Dragon Tiger settlement failed for {} {}",mode,id,e);}}
+ @org.springframework.beans.factory.annotation.Autowired philip.emerald.ace.colorgame.ColorJackpotService jackpot;
+ @Scheduled(fixedDelay=500,initialDelay=1500) public void colorJackpot(){for(String mode:java.util.List.of("LOBBY","CLUB"))try{jackpot.settleDue(mode,System.currentTimeMillis());}catch(Exception e){LoggerFactory.getLogger(Jobs.class).error("Color Jackpot settlement failed for {}",mode,e);}}
  @org.springframework.beans.factory.annotation.Autowired ColorGameService colorGame;
  @Scheduled(fixedDelay=250,initialDelay=1000) public void colorGame(){for(String mode:java.util.List.of("LOBBY","CLUB"))for(String id:colorGame.pendingPlayers(mode))try{colorGame.settle(mode,id,System.currentTimeMillis());}catch(Exception e){LoggerFactory.getLogger(Jobs.class).error("Color Game settlement failed for {} {}",mode,id,e);}}
  @org.springframework.beans.factory.annotation.Autowired CrashService crash;

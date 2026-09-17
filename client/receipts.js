@@ -6,10 +6,10 @@ document.body.append(receiptDialog);let receiptOwner=null,receiptCurrent=null,re
 async function pollReceipts(){
  if(receiptPolling||!ready||!canPlay())return;
  if(receiptCurrent&&receiptOwner!==player.id){receiptDialog.close();receiptCurrent=null;}
- if(receiptCurrent||document.querySelector('dialog[open]'))return;
+ if(receiptCurrent||document.querySelector('dialog[open]')||(typeof cgBusy!=='undefined'&&cgBusy))return;
  const owner=player.id;receiptPolling=true;
- try{const notices=await api('notifications');if(!player||player.id!==owner||!canPlay()||document.querySelector('dialog[open]'))return;
-  if(notices.length){receiptCurrent=notices[0];receiptOwner=owner;const gold=receiptCurrent.currency==='GOLD';$('receiptTitle').removeAttribute('data-i18n');$('receiptTitle').textContent=t(gold?'Daily Lobby reward':'Chips received');$('receiptPlace').textContent=gold?'LOBBY':'LUCKY SEVEN · 686868';$('receiptRead').textContent=t('Received');$('receiptAmount').textContent='+'+fmt(receiptCurrent.amountCents/100)+(gold?' Gold':' chips');$('receiptSender').textContent=(gold?'':t('From')+': ')+receiptCurrent.senderName;receiptDialog.showModal();}
+ try{const notices=await api('notifications');if(!player||player.id!==owner||!canPlay()||document.querySelector('dialog[open]')||(typeof cgBusy!=='undefined'&&cgBusy))return;
+  if(notices.length){receiptCurrent=notices[0];receiptOwner=owner;const gold=receiptCurrent.currency==='GOLD',jackpot=receiptCurrent.kind==='JACKPOT';receiptDialog.classList.toggle('jackpot-receipt',jackpot);receiptDialog.querySelector('.receipt-symbol').textContent=jackpot?'♛':'◉';$('receiptTitle').removeAttribute('data-i18n');$('receiptTitle').textContent=t(jackpot?'Jackpot won!':gold?'Daily Lobby reward':'Chips received');$('receiptPlace').textContent=gold?'LOBBY':'LUCKY SEVEN · 686868';$('receiptRead').textContent=t('Received');$('receiptAmount').textContent='+'+fmt(receiptCurrent.amountCents/100)+(gold?' Gold':' chips');$('receiptSender').textContent=jackpot?receiptCurrent.tier+' JACKPOT · #'+receiptCurrent.roundId:(gold?'':t('From')+': ')+receiptCurrent.senderName;receiptDialog.showModal();if(jackpot&&typeof cgCue==='function')cgCue('win');}
  }catch{}finally{receiptPolling=false;}
 }
 async function acknowledgeReceipt(){if(!receiptCurrent)return;const button=$('receiptRead');if(button.disabled)return;button.disabled=true;try{await api('notifications/'+receiptCurrent.id+'/read','POST');receiptDialog.close();receiptCurrent=null;}catch(e){toast(errorText(e))}finally{button.disabled=false;}}

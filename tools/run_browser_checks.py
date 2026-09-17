@@ -6,7 +6,7 @@ Never points at the user's MySQL database.
 """
 import os, pathlib, shutil, socket, subprocess, sys, tempfile, time, urllib.request, uuid
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-SUITES={'plinko-motion':'plinko_motion_browser.cjs','color27':'color_v27_browser.cjs','superace':'superace_collection_browser.cjs','sakla':'sakla_browser.cjs','lucky9':'lucky_nine_browser.cjs','bingo':'bingo_browser.cjs','plinko':'arcade_browser.cjs','wheel':'wheel_browser.cjs','slots':'slots_browser.cjs','mines':'mines_browser.cjs','crash':'crash_browser.cjs','dragon-tiger':'dragon_tiger_browser.cjs','color':'color_game_browser.cjs','recovery':'color_game_recovery_browser.cjs'}
+SUITES={'color-jackpot':'color_jackpot_browser.cjs','color-landscape':'color_landscape_browser.cjs','color-history':'color_history_browser.cjs','color3d':'color_3d_browser.cjs','plinko-motion':'plinko_motion_browser.cjs','color27':'color_v27_browser.cjs','superace':'superace_collection_browser.cjs','sakla':'sakla_browser.cjs','lucky9':'lucky_nine_browser.cjs','bingo':'bingo_browser.cjs','plinko':'arcade_browser.cjs','wheel':'wheel_browser.cjs','slots':'slots_browser.cjs','mines':'mines_browser.cjs','crash':'crash_browser.cjs','dragon-tiger':'dragon_tiger_browser.cjs','color':'color_game_browser.cjs','recovery':'color_game_recovery_browser.cjs'}
 def port():
  with socket.socket() as s:s.bind(('127.0.0.1',0));return s.getsockname()[1]
 def main():

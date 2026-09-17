@@ -12,6 +12,7 @@ import java.util.*;
 @Service
 public class ColorGameService {
  public static final long BETTING_MS=10_000,REVEAL_MS=5_000,CYCLE_MS=BETTING_MS+REVEAL_MS;
+ @org.springframework.beans.factory.annotation.Autowired private ColorJackpotService jackpot;
  private final GameService club;private final LobbyGameService lobby;private final Accounts accounts;
  private final ColorGameEngine engine=new ColorGameEngine();
  public ColorGameService(GameService club,LobbyGameService lobby,Accounts accounts){this.club=club;this.lobby=lobby;this.accounts=accounts;}
@@ -51,7 +52,7 @@ public class ColorGameService {
  public Table tableAt(long time){long id=roundId(time),start=startsAt(id),close=start+BETTING_MS,next=start+CYCLE_MS;boolean reveal=time>=close;return new Table(id,reveal?"REVEAL":"BETTING",time,close,next,(int)Math.max(0,Math.ceil((double)((reveal?next:close)-time)/1000)),reveal?shared(id):null);}
  Round visible(Round round,long time){return time>=round.revealAt()?round:new Round(round.requestId(),round.mode(),round.tableRoundId(),round.revealAt(),round.side(),round.betCents(),round.payoutCents(),round.balanceBeforeCents(),round.balanceCents(),round.revision(),round.createdAt(),null);}
  @Transactional public Round play(Accounts.User actor,String mode,long tableRoundId,String requestId,ColorGameEngine.Side side,long bet,long revision){
-  var game=selected(mode);accounts.requireGame(actor);settle(mode,actor.id(),now());var w=game.wallet(actor.id(),true);long time=now();
+  var game=selected(mode);accounts.requireGame(actor);jackpot.lockBetRound(mode,tableRoundId,now());settle(mode,actor.id(),now());var w=game.wallet(actor.id(),true);long time=now();
   var u=accounts.user(actor.id());if(!u.enabled())throw Accounts.unauthorized();accounts.requireGame(u);
   var prior=game.db().query("SELECT game_type,response_json FROM "+game.table("round_ledger")+" WHERE player_id=? AND request_id=?",(r,n)->{
    if(!r.getString(1).equals("COLOR_GAME"))throw GameService.error(409,"REQUEST_REUSED");return game.decode(r.getString(2),Round.class);
@@ -76,6 +77,7 @@ public class ColorGameService {
   var agent=u.role()==Accounts.Role.AGENT?u:(u.role()==Accounts.Role.PLAYER&&u.parentId()!=null?accounts.user(u.parentId()):null);
   game.db().update("INSERT INTO "+game.table("round_ledger")+"(player_id,request_id,agent_id,super_agent_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,response_json,created_at,rtp_profile,game_type,game_round_id,cg_settled) VALUES(?,?,?,?,?,?,?,FALSE,?,?,?,?,?,?,FALSE)",
    u.id(),requestId,agent==null?null:agent.id(),u.role()==Accounts.Role.SUPER_AGENT?u.id():(agent==null?null:agent.parentId()),bet,bet,payout,result.revision(),game.encode(result),time,"COLOR_DICE_V1","COLOR_GAME",tableRoundId);
+  jackpot.recordBet(mode,tableRoundId,u.id(),requestId,bet);
   return visible(result,time);
  }
  @Transactional public void settle(String mode,String playerId,long time){
@@ -90,7 +92,7 @@ public class ColorGameService {
   if(!rows.isEmpty())game.db().update("UPDATE "+game.table("wallets")+" SET balance=?,revision=? WHERE player_id=?",balance,revision,playerId);
  }
  public record Winner(String displayName,long payoutCents){}
- public List<Winner> winners(String mode){var game=selected(mode);long start=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Manila")).atStartOfDay(java.time.ZoneId.of("Asia/Manila")).toInstant().toEpochMilli();return game.db().query("SELECT a.display_name,SUM(l.payout_cents) total FROM "+game.table("round_ledger")+" l JOIN accounts a ON a.id=l.player_id WHERE l.game_type='COLOR_GAME' AND l.cg_settled=TRUE AND l.created_at>=? GROUP BY a.id,a.display_name HAVING SUM(l.payout_cents)>0 ORDER BY total DESC,a.id LIMIT 10",(r,n)->new Winner(r.getString(1),r.getLong(2)),start);}
+ public List<Winner> winners(String mode){var game=selected(mode);long start=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Manila")).atStartOfDay(java.time.ZoneId.of("Asia/Manila")).toInstant().toEpochMilli();return game.db().query("SELECT a.display_name,SUM(l.payout_cents) total FROM (SELECT player_id,payout_cents FROM "+game.table("round_ledger")+" WHERE game_type='COLOR_GAME' AND cg_settled=TRUE AND created_at>=? UNION ALL SELECT player_id,amount_cents payout_cents FROM color_jackpot_awards WHERE mode=? AND created_at>=?) l JOIN accounts a ON a.id=l.player_id GROUP BY a.id,a.display_name HAVING SUM(l.payout_cents)>0 ORDER BY total DESC,a.id LIMIT 10",(r,n)->new Winner(r.getString(1),r.getLong(2)),start,mode,start);}
  public List<String> pendingPlayers(String mode){var game=selected(mode);return game.db().queryForList("SELECT DISTINCT player_id FROM "+game.table("round_ledger")+" WHERE cg_settled=FALSE AND game_round_id<=? LIMIT 100",String.class,Math.floorDiv(now()-BETTING_MS,CYCLE_MS));}
  @Transactional public List<Round> bets(Accounts.User actor,String mode,long id){accounts.requireGame(actor);settle(mode,actor.id(),now());var game=selected(mode);return game.db().query("SELECT response_json FROM "+game.table("round_ledger")+" WHERE player_id=? AND game_type='COLOR_GAME' AND game_round_id=? ORDER BY wallet_revision",(r,n)->visible(game.decode(r.getString(1),Round.class),now()),actor.id(),id);}
  @Transactional public List<Round> history(Accounts.User actor,String mode){return historyAt(actor,mode,now());}
