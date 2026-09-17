@@ -81,8 +81,12 @@ public class ApiController {
   var info=new HashMap<String,Object>();info.put("mode",mode);info.put("targetPercent",setting.targetPercent());info.put("revision",setting.revision());info.put("payoutScale",GameEngine.scaleFor(setting.profile()));info.put("observedPercent",wager==0?null:100.0*payout/wager);return info;
  }
  @org.springframework.beans.factory.annotation.Autowired DragonTigerService dragonTiger;
- public record DragonTigerRequest(@NotNull UUID requestId,@NotNull DragonTigerEngine.Side side,@Positive long betCents,@PositiveOrZero long expectedRevision){}
- @PostMapping("/dragon-tiger/rounds") public DragonTigerService.Round dragonTiger(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody DragonTigerRequest b){return dragonTiger.play(auth(r).user(),mode,b.requestId().toString(),b.side(),b.betCents(),b.expectedRevision());}
+ public record DragonTigerRequest(@NotNull UUID requestId,@PositiveOrZero long tableRoundId,@NotNull DragonTigerEngine.Side side,@Positive long betCents,@PositiveOrZero long expectedRevision){}
+ @GetMapping("/dragon-tiger/table") public DragonTigerService.Table dragonTigerTable(){return dragonTiger.table();}
+ @GetMapping("/dragon-tiger/crowd") public DragonTigerService.Crowd dragonTigerCrowd(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@RequestParam long roundId){return dragonTiger.crowd(cookie(r)==null?null:auth(r).user(),mode,roundId);}
+ @GetMapping("/dragon-tiger/table/history") public List<DragonTigerService.TableResult> dragonTigerTableHistory(){return dragonTiger.tableHistory();}
+ @GetMapping("/dragon-tiger/bets") public List<DragonTigerService.Round> dragonTigerBets(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@RequestParam long roundId){return dragonTiger.bets(auth(r).user(),mode,roundId);}
+ @PostMapping("/dragon-tiger/rounds") public DragonTigerService.Round dragonTiger(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode,@Valid @RequestBody DragonTigerRequest b){return dragonTiger.play(auth(r).user(),mode,b.tableRoundId(),b.requestId().toString(),b.side(),b.betCents(),b.expectedRevision());}
  @GetMapping("/dragon-tiger/rounds") public List<DragonTigerService.Round> dragonTigerHistory(HttpServletRequest r,@RequestParam(defaultValue="LOBBY")String mode){return dragonTiger.history(auth(r).user(),mode);}
  @GetMapping("/health") public ResponseEntity<?> health(){boolean ready=game.db().queryForObject("SELECT COUNT(*) FROM accounts WHERE role='CREATOR'",Integer.class)>0;return ResponseEntity.status(ready?200:503).body(Map.of("status",ready?"up":"starting","version","13.0.0"));}
 }

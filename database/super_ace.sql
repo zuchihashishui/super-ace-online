@@ -1,6 +1,6 @@
--- Super Ace database schema V11 (MySQL 8+)
+-- Super Ace database schema V14 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
--- For existing V4–V10 databases use the matching upgrade file, OR simply start the new server.
+-- For existing V4–V13 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
 CREATE DATABASE IF NOT EXISTS ace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ace;
@@ -202,6 +202,36 @@ UPDATE rtp_settings SET target_bps=10000,revision=revision+1
 UPDATE rtp_settings SET target_bps=9750,revision=revision+1
  WHERE mode='CLUB' AND target_bps=9700 AND revision=0;
 
+-- V12__dragon_tiger_timed_rounds.sql
+ALTER TABLE round_ledger ADD COLUMN game_round_id BIGINT;
+ALTER TABLE lobby_round_ledger ADD COLUMN game_round_id BIGINT;
+CREATE UNIQUE INDEX ledger_player_game_round ON round_ledger(player_id,game_type,game_round_id);
+CREATE UNIQUE INDEX lobby_ledger_player_game_round ON lobby_round_ledger(player_id,game_type,game_round_id);
+CREATE TABLE dragon_tiger_rounds (
+ round_id BIGINT PRIMARY KEY,
+ starts_at BIGINT NOT NULL,
+ betting_closes_at BIGINT NOT NULL,
+ reveal_ends_at BIGINT NOT NULL,
+ outcome_json LONGTEXT NOT NULL
+);
+CREATE INDEX dragon_tiger_round_expiry ON dragon_tiger_rounds(reveal_ends_at);
+
+-- V13__dragon_tiger_multiple_bets.sql
+DROP INDEX ledger_player_game_round ON round_ledger;
+DROP INDEX lobby_ledger_player_game_round ON lobby_round_ledger;
+CREATE INDEX ledger_player_game_round_lookup ON round_ledger(player_id,game_type,game_round_id);
+CREATE INDEX lobby_ledger_player_game_round_lookup ON lobby_round_ledger(player_id,game_type,game_round_id);
+-- Existing V12 rounds were paid immediately. Never pay those a second time.
+ALTER TABLE round_ledger ADD COLUMN dt_settled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE lobby_round_ledger ADD COLUMN dt_settled BOOLEAN NOT NULL DEFAULT TRUE;
+CREATE INDEX ledger_dt_pending ON round_ledger(dt_settled,game_round_id);
+CREATE INDEX lobby_ledger_dt_pending ON lobby_round_ledger(dt_settled,game_round_id);
+
+-- V14__dragon_tiger_table_totals.sql
+-- Current-round totals across all bettors, kept separate for each currency wallet.
+CREATE INDEX ledger_dt_table_totals ON round_ledger(game_type,game_round_id);
+CREATE INDEX lobby_ledger_dt_table_totals ON lobby_round_ledger(game_type,game_round_id);
+
 
 -- Club and management seed. All four default accounts use password 112357.
 INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
@@ -232,3 +262,6 @@ INSERT INTO flyway_schema_history(installed_rank,version,description,type,script
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(9,'9','creator rtp settings','SQL','V9__creator_rtp_settings.sql',135689784,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(10,'10','dragon tiger','SQL','V10__dragon_tiger.sql',1445817963,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(11,'11','super ace rtp defaults','SQL','V11__super_ace_rtp_defaults.sql',594068105,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(12,'12','dragon tiger timed rounds','SQL','V12__dragon_tiger_timed_rounds.sql',-1036159462,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(13,'13','dragon tiger multiple bets','SQL','V13__dragon_tiger_multiple_bets.sql',-2052350647,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(14,'14','dragon tiger table totals','SQL','V14__dragon_tiger_table_totals.sql',-854339490,CURRENT_USER(),0,1);

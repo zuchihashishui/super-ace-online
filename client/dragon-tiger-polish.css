@@ -1,0 +1,42 @@
+/* Original Lucky Seven table artwork; no third-party app assets. */
+.dt-page{--dt-red:#ff917c;--dt-blue:#8ad9ff;--dt-gold:#efcf8b}
+.dt-heading{padding:20px 0 16px}.dt-heading h1{text-shadow:0 2px 15px #e3bc5020}
+.dt-toolbar{display:flex;align-items:center;gap:12px;margin:0 4px 12px;color:#99a9b8;font-size:10px;min-height:44px}
+.dt-link-state{display:flex;align-items:center;gap:6px}.dt-link-state i{width:6px;height:6px;border-radius:50%;background:#78d8b0;box-shadow:0 0 8px #78d8b070}.dt-link-state.offline i{background:#f1ba68;box-shadow:none}
+#dtRoundLabel{margin-left:auto;font-variant-numeric:tabular-nums}
+.dt-toolbar button{min-width:44px;min-height:44px;border:1px solid #d5b67633;border-radius:50%;color:#e8cd99;background:#132c2b;font-size:19px}
+.dt-table{background:radial-gradient(ellipse at 15% 60%,#923c3633,transparent 58%),radial-gradient(ellipse at 90% 55%,#236b7733,transparent 55%),radial-gradient(ellipse at 50% 0%,#235149,#102a2b 60%,#0c1c23);box-shadow:0 18px 55px #0005,inset 0 0 0 5px #151d20,inset 0 0 0 6px #bf9b5540;border-color:#bc965b80}
+.dt-table:before{border-color:#d4b57830}.dt-emblem{height:72px;width:72px}.dt-dragon .dt-emblem{filter:drop-shadow(0 0 14px #ff6b4940)}.dt-tiger .dt-emblem{filter:drop-shadow(0 0 14px #65cfff40)}
+.dt-bet-side{background:linear-gradient(155deg,#842d3038,#47202930);border-color:#e58c6a80}.dt-bet-side.tiger{background:linear-gradient(155deg,#26678740,#19374b40);border-color:#6ab3d980}.dt-bet-side.tie{background:linear-gradient(155deg,#78643a40,#4b3d2230);border-color:#c6ad6c80}
+.dt-bet-side.placed{box-shadow:inset 0 0 24px #e9c67b15,0 0 0 1px #efce90}.dt-bet-side.winning{animation:dt-winner-in .6s ease-out;box-shadow:0 0 0 2px #f5d987,0 0 26px #e8c06d60,inset 0 0 30px #e7c67f25}
+.dt-bets{max-width:740px}.dt-bet-side:active:not(:disabled){transform:scale(.975)}.dt-bet-side:disabled{opacity:.8}.dt-bets-closed .dt-bet-side{cursor:default}
+.dt-card-front{background:radial-gradient(ellipse at top,#fffef7,#e9e3d6);border-color:#f7e7bd;box-shadow:inset 0 0 0 3px #fff6df,0 8px 14px #0006}.dt-card-front:after{content:"";position:absolute;inset:5px;border:1px solid #bdad8735;border-radius:5px;pointer-events:none}
+.dt-card-back{background:repeating-linear-gradient(45deg,transparent 0 6px,#d9c08a14 6px 7px),repeating-linear-gradient(-45deg,#163537 0 6px,#cbb77714 6px 7px);border-color:#c7aa77}
+.dt-stage-message{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);max-width:90%;padding:12px 25px;border:1px solid #e0c38880;border-radius:30px;background:#101f23ed;box-shadow:0 10px 40px #0005;color:#fae5b7;text-align:center;white-space:nowrap;font:600 17px Georgia;opacity:0;pointer-events:none;z-index:5}
+.dt-stage-message.show{animation:dt-stage-show 1.45s ease both}.dt-table.bets-closed .dt-clock{border-color:#ffae8270}
+.dt-flying-chip{position:fixed;z-index:2000;width:34px;height:34px;border-radius:50%;border:3px dashed #fff9;display:grid;place-items:center;background:#d3b26d;box-shadow:0 4px 10px #0005;color:#252019;font:bold 13px Georgia;pointer-events:none}
+.dt-history-summary{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}.dt-history-summary>span{padding:7px 12px;border-radius:8px;border:1px solid #ffffff12;font:11px Arial;color:#ffad99;background:#582f3025}.dt-history-summary>.TIGER{color:#9fdbff;background:#2f4c5825}.dt-history-summary>.TIE{color:#edcf8e;background:#584f2f25}
+.dt-road{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;padding:10px;border:1px solid #cfbc8d30;border-radius:12px;background:#080f1840;min-height:64px;align-items:center}
+.dt-road .dt-bead{width:100%;height:40px;border-radius:8px;cursor:pointer;font-size:13px;position:relative}.dt-road .dt-bead.latest:after{content:"";position:absolute;bottom:3px;left:50%;width:4px;height:4px;transform:translateX(-50%);border-radius:50%;background:currentColor}.dt-bead:focus-visible{outline:2px solid #f8d598;outline-offset:2px}.dt-bead:hover{filter:brightness(1.2)}
+.dt-audio-dialog,.dt-inspect{background:linear-gradient(145deg,#173332,#111d29);color:#ede5d2;border:1px solid #b89b66;box-shadow:0 20px 90px #0009;max-width:min(94vw,520px);border-radius:20px;padding:28px;position:fixed}
+.dt-audio-dialog::backdrop,.dt-inspect::backdrop{background:#030a10b8}
+.dt-audio-dialog h2,.dt-inspect h2{font:25px Georgia}.dt-audio-dialog p{color:#afbdc3;line-height:1.6;font-size:12px}.dt-audio-dialog label{display:block;font-size:12px;margin-top:20px;color:#c4b899}
+.dt-audio-dialog>button:not(.close){min-height:44px;padding:12px 22px;border-radius:10px;border:1px solid #c9ad78;background:#263e3b;color:#f3dbaf}
+.dt-volume-row{display:flex;align-items:center;gap:14px;margin:8px 0 20px}.dt-volume-row input{flex:1;width:100%;accent-color:#e2c185;min-height:44px}.dt-volume-row output{font-variant-numeric:tabular-nums;width:42px}
+.dt-inspect-hands{display:grid;grid-template-columns:1fr 1fr;gap:20px}.dt-inspect h3{font:14px Georgia;color:#e6c998}.dt-inspect h3 span{float:right}.dt-inspect .dt-card{width:72px;height:105px}.dt-inspect .dt-cards{min-height:105px;gap:6px}.dt-inspect .dt-card-front strong{font-size:34px}
+.dt-page:fullscreen{background:radial-gradient(ellipse at top,#143b30,#09191b);max-width:none;overflow:auto;padding:20px max(18px,calc((100vw - 1080px)/2));box-sizing:border-box}
+@keyframes dt-stage-show{0%{opacity:0;transform:translate(-50%,-40%) scale(.94)}18%,68%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-60%) scale(.98)}}
+@keyframes dt-winner-in{0%{filter:brightness(1.6);transform:scale(.98)}100%{filter:none;transform:none}}
+@media(max-width:760px){
+ .dt-heading{padding:14px 0 6px}.dt-heading .dt-eyebrow{font-size:8px;margin-bottom:6px}.dt-heading h1{font-size:28px}.dt-heading>p:last-child{margin-top:5px;font-size:10px}
+ .dt-toolbar{gap:8px;margin-bottom:8px;font-size:9px}.dt-toolbar button{font-size:17px}.dt-table-line{padding-top:32px;margin:12px 14px 0}.dt-clock{top:11px}
+ .dt-emblem{height:35px;width:35px;margin:8px auto 3px}.dt-arena{padding:2px 15px 0;gap:24px}.dt-hand{padding-bottom:5px}.dt-hand-title{margin-bottom:8px}.dt-hand h2{font-size:17px}.dt-card{width:66px;height:96px}.dt-cards{min-height:99px}.dt-card-front strong{font-size:33px}.dt-result{min-height:52px;gap:4px}.dt-result strong{font-size:18px}.dt-result span{font-size:10px}
+ .dt-bet-side{min-height:116px;padding:8px 3px}.dt-bet-side .dt-side-pending{font-size:8px}.dt-payout-note{font-size:8px;line-height:1.5;margin:10px 14px 13px}.dt-bets{margin-top:4px}
+ .dt-chip-console{position:sticky;bottom:max(6px,env(safe-area-inset-bottom));z-index:6;margin-top:10px;padding:12px 15px;gap:9px 14px;box-shadow:0 8px 30px #0008;background:#112326;border-color:#cfb87a50}
+ .dt-chip-picker>small{font-size:9px;margin-bottom:10px}.dt-chips{gap:15px}.dt-chip{width:48px;height:48px;font-size:17px;border-width:4px}.dt-chip[aria-pressed=true]{transform:translateY(-3px);outline-offset:3px}
+ .dt-wallet strong{grid-column:auto;font-size:20px}.dt-wallet span{grid-column:auto}.dt-wallet small{font-size:9px}.dt-wager-total{gap:2px}.dt-wager-total strong{font-size:20px}.dt-wager-total small{font-size:9px}.dt-status{margin:9px 5px 15px;min-height:15px}
+ .dt-history{padding:15px}.dt-road{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.dt-road .dt-bead{height:44px}.dt-history-summary{gap:6px}.dt-history-summary>span{padding:6px 9px;font-size:10px}
+ .dt-stage-message{font-size:15px;padding:10px 20px}.dt-audio-dialog,.dt-inspect{padding:22px 16px}.dt-inspect-hands{gap:14px}.dt-inspect .dt-card{width:58px;height:85px}.dt-inspect .dt-cards{min-height:85px;gap:4px}
+}
+@media(max-width:370px){.dt-heading h1{font-size:25px}.dt-card{width:56px;height:83px}.dt-cards{min-height:86px}.dt-arena{padding-inline:10px;gap:20px}.dt-hand h2{font-size:14px}.dt-hand-title{gap:5px}.dt-toolbar{gap:5px;font-size:8px}.dt-chips{gap:12px}.dt-chip-console{padding:12px}.dt-inspect .dt-card{width:51px;height:75px}}
+@media(prefers-reduced-motion:reduce){.dt-stage-message.show{animation:none;opacity:0}.dt-bet-side.winning{animation:none}.dt-flying-chip{display:none}.dt-bet-side:active:not(:disabled){transform:none}}

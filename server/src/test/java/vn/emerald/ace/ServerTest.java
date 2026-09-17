@@ -18,47 +18,107 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ServerTest {
 
  @Autowired DragonTigerService dragonTiger;
+ @Test void dragonTigerCrowdExcludesViewerAndSeparatesCurrencies()throws Exception{
+  var a=tree().player();var b=tree().player();long round=bettingRound();
+  var first=dragonTiger.play(a,"LOBBY",round,id(),DragonTigerEngine.Side.DRAGON,500,0);
+  dragonTiger.play(a,"LOBBY",round,id(),DragonTigerEngine.Side.DRAGON,500,1);
+  dragonTiger.play(b,"LOBBY",round,id(),DragonTigerEngine.Side.DRAGON,2000,0);
+  dragonTiger.play(b,"LOBBY",round,id(),DragonTigerEngine.Side.TIGER,1000,1);
+  dragonTiger.play(a,"LOBBY",round,first.requestId(),first.side(),500,0);
+  var mine=dragonTiger.crowd(a,"LOBBY",round);var d=mine.sides().stream().filter(s->s.side()==DragonTigerEngine.Side.DRAGON).findFirst().orElseThrow();
+  assertEquals(1000,d.ownCents());assertEquals(2,d.ownChipCount());assertTrue(d.othersCents()>=2000);assertTrue(d.otherBettors()>=1);
+  var theirs=dragonTiger.crowd(b,"LOBBY",round).sides().stream().filter(s->s.side()==DragonTigerEngine.Side.DRAGON).findFirst().orElseThrow();assertEquals(2000,theirs.ownCents());assertEquals(1,theirs.ownChipCount());assertEquals(d.othersCents()+d.ownCents(),theirs.othersCents()+theirs.ownCents());
+  dragonTiger.play(b,"CLUB",round,id(),DragonTigerEngine.Side.DRAGON,1500,0);
+  var club=dragonTiger.crowd(a,"CLUB",round);assertTrue(club.sides().stream().allMatch(s->s.ownCents()==0));assertTrue(club.sides().stream().filter(s->s.side()==DragonTigerEngine.Side.DRAGON).findFirst().orElseThrow().othersCents()>=1500);
+  assertEquals(d.othersCents(),dragonTiger.crowd(a,"LOBBY",round).sides().stream().filter(s->s.side()==DragonTigerEngine.Side.DRAGON).findFirst().orElseThrow().othersCents());
+  var guest=dragonTiger.crowd(null,"LOBBY",round);assertTrue(guest.sides().stream().allMatch(s->s.ownCents()==0));assertTrue(guest.bettors()>=2);
+  String json=mvc.perform(get("/api/dragon-tiger/crowd").param("mode","LOBBY").param("roundId",String.valueOf(round))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+  assertFalse(json.contains(a.id()));assertFalse(json.contains(b.id()));assertFalse(json.contains("outcome"));assertFalse(json.contains("payout"));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.crowd(a,"BAD",round));assertThrows(GameService.ApiError.class,()->dragonTiger.crowd(a,"LOBBY",round+100));
+ }
+ @Test void dragonTigerHistoryLimitsGamesNotChipClicks()throws Exception{
+  var u=tree().player();long current=System.currentTimeMillis()/DragonTigerService.CYCLE_MS,rev=0;
+  for(int i=0;i<22;i++){
+   long round=current-100+i,close=round*DragonTigerService.CYCLE_MS+DragonTigerService.BETTING_MS;var outcome=dragonTiger.tableAt(close).outcome();
+   for(int j=0;j<3;j++){
+    var row=new DragonTigerService.Round(id(),"LOBBY",round,close,DragonTigerEngine.Side.DRAGON,500,0,10000,9500,++rev,close-1000,outcome);
+    db.update("INSERT INTO lobby_round_ledger(player_id,request_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,response_json,created_at,rtp_profile,game_type,game_round_id) VALUES(?,?,500,500,0,FALSE,?,?,?,'DT_TWO_CARD_V2','DRAGON_TIGER',?)",u.id(),row.requestId(),rev,lobby.encode(row),row.createdAt(),round);
+   }
+  }
+  var rows=dragonTiger.history(u,"LOBBY");assertEquals(60,rows.size());assertEquals(20,rows.stream().map(DragonTigerService.Round::tableRoundId).distinct().count());assertEquals(current-79,rows.getFirst().tableRoundId());assertEquals(current-98,rows.getLast().tableRoundId());
+  dragonTiger.tableAt((current+100)*DragonTigerService.CYCLE_MS+DragonTigerService.BETTING_MS);
+  var publicRows=dragonTiger.tableHistory();assertEquals(20,publicRows.size());assertTrue(publicRows.stream().allMatch(r->r.createdAt()<=System.currentTimeMillis()));
+  mvc.perform(get("/api/dragon-tiger/table/history")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(20));
+ }
+ @Test void dragonTigerMultipleChipsReserveAndSettleExactlyOnce(){
+  var u=tree().player();long round=bettingRound(),before=lobby.wallet(u.id(),false).balanceCents(),clubBefore=game.wallet(u.id(),false).balanceCents();
+  var first=dragonTiger.play(u,"LOBBY",round,id(),DragonTigerEngine.Side.DRAGON,1000,0);
+  var second=dragonTiger.play(u,"LOBBY",round,id(),DragonTigerEngine.Side.DRAGON,1000,1);
+  var third=dragonTiger.play(u,"LOBBY",round,id(),DragonTigerEngine.Side.TIE,500,2);
+  assertEquals(before-2500,lobby.wallet(u.id(),false).balanceCents());assertEquals(clubBefore,game.wallet(u.id(),false).balanceCents());
+  for(var bet:List.of(first,second,third)){assertNull(bet.outcome());assertEquals(0,bet.payoutCents());}
+  assertEquals(3,dragonTiger.bets(u,"LOBBY",round).size());
+  assertEquals(first,dragonTiger.play(u,"LOBBY",round,first.requestId(),first.side(),first.betCents(),0));
+  assertEquals(before-2500,lobby.wallet(u.id(),false).balanceCents());
+  dragonTiger.settle("LOBBY",u.id(),third.revealAt()-1);assertEquals(before-2500,lobby.wallet(u.id(),false).balanceCents());
+  dragonTiger.settle("LOBBY",u.id(),third.revealAt());
+  var settled=dragonTiger.historyAt(u,"LOBBY",third.revealAt());assertEquals(3,settled.size());long payout=0;
+  for(var bet:settled){assertNotNull(bet.outcome());assertEquals(DragonTigerEngine.payout(bet.betCents(),bet.side(),bet.outcome().winner()),bet.payoutCents());assertEquals(settled.getFirst().outcome(),bet.outcome());payout+=bet.payoutCents();}
+  long after=before-2500+payout;assertEquals(after,lobby.wallet(u.id(),false).balanceCents());
+  dragonTiger.settle("LOBBY",u.id(),third.revealAt()+100);assertEquals(after,lobby.wallet(u.id(),false).balanceCents());
+ }
+ @Test void dragonTigerNoOverspendAndNoLateBets(){
+  var u=tree().player();db.update("UPDATE wallets SET balance=1500 WHERE player_id=?",u.id());long round=bettingRound();
+  dragonTiger.play(u,"CLUB",round,id(),DragonTigerEngine.Side.DRAGON,1000,0);
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",round,id(),DragonTigerEngine.Side.TIGER,1000,1));
+  assertEquals(500,game.wallet(u.id(),false).balanceCents());
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",round-1,id(),DragonTigerEngine.Side.TIE,500,1));
+  assertEquals(500,game.wallet(u.id(),false).balanceCents());
+ }
+ @Test void dragonTigerTableHasTenSecondBettingAndFiveSecondReveal(){long id=12345,start=id*DragonTigerService.CYCLE_MS;var betting=dragonTiger.tableAt(start+1);assertEquals("BETTING",betting.phase());assertEquals(10,betting.secondsRemaining());assertNull(betting.outcome());var reveal=dragonTiger.tableAt(start+DragonTigerService.BETTING_MS);assertEquals("REVEAL",reveal.phase());assertEquals(5,reveal.secondsRemaining());assertNotNull(reveal.outcome());assertEquals(id,reveal.roundId());assertEquals(start+DragonTigerService.CYCLE_MS,reveal.nextRoundAt());}
  @Test void dragonTigerWalletIsolationRetryAndReports(){
   var t=tree();var u=t.player();long clubBefore=game.wallet(u.id(),false).balanceCents(),goldBefore=lobby.wallet(u.id(),false).balanceCents();
-  String request=id();var gold=dragonTiger.play(u,"LOBBY",request,DragonTigerEngine.Side.TIE,755,0);
+  String request=id();var gold=dragonTiger.play(u,"LOBBY",bettingRound(),request,DragonTigerEngine.Side.TIE,755,0);
   assertEquals(goldBefore-755+gold.payoutCents(),lobby.wallet(u.id(),false).balanceCents());
   assertEquals(clubBefore,game.wallet(u.id(),false).balanceCents());
-  assertEquals(gold,dragonTiger.play(u,"LOBBY",request,DragonTigerEngine.Side.TIE,755,0));
-  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"LOBBY",request,DragonTigerEngine.Side.DRAGON,755,0));
+  assertEquals(gold,dragonTiger.play(u,"LOBBY",bettingRound(),request,DragonTigerEngine.Side.TIE,755,0));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"LOBBY",bettingRound(),request,DragonTigerEngine.Side.DRAGON,755,0));
   assertThrows(GameService.ApiError.class,()->lobby.spin(u,request,755,gold.revision()));
-  var result=dragonTiger.play(u,"CLUB",request,DragonTigerEngine.Side.DRAGON,500,0);
+  var result=dragonTiger.play(u,"CLUB",bettingRound(),request,DragonTigerEngine.Side.DRAGON,500,0);
   assertEquals(clubBefore-500+result.payoutCents(),game.wallet(u.id(),false).balanceCents());
   assertEquals(gold.balanceCents(),lobby.wallet(u.id(),false).balanceCents());
-  assertEquals(1,dragonTiger.history(u,"CLUB").size());assertEquals(1,dragonTiger.history(u,"LOBBY").size());
-  var report=reports.report(u,"day",reports.today());assertEquals(500,report.wagerCents());assertEquals(result.payoutCents(),report.payoutCents());
+  assertEquals(0,dragonTiger.history(u,"CLUB").size());long after=result.revealAt()+1;assertEquals(1,dragonTiger.historyAt(u,"CLUB",after).size());assertEquals(1,dragonTiger.historyAt(u,"LOBBY",after).size());
+  var settled=dragonTiger.historyAt(u,"CLUB",after).getFirst();var report=reports.report(u,"day",reports.today());assertEquals(500,report.wagerCents());assertEquals(settled.payoutCents(),report.payoutCents());
   assertEquals("DRAGON_TIGER",db.queryForObject("SELECT game_type FROM round_ledger WHERE player_id=?",String.class,u.id()));
  }
  @Test void dragonTigerGuardsAndSharedWalletConcurrency()throws Exception{
   var t=tree();var u=t.player();
-  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"BAD",id(),DragonTigerEngine.Side.TIE,500,0));
-  for(long invalid:List.of(0L,499L,50001L))assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",id(),DragonTigerEngine.Side.TIE,invalid,0));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"BAD",bettingRound(),id(),DragonTigerEngine.Side.TIE,500,0));
+  for(long invalid:List.of(0L,499L,50001L))assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",bettingRound(),id(),DragonTigerEngine.Side.TIE,invalid,0));
   db.update("UPDATE wallets SET free_spins=1,locked_bet=2000 WHERE player_id=?",u.id());
-  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",id(),DragonTigerEngine.Side.TIE,500,0));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",bettingRound(),id(),DragonTigerEngine.Side.TIE,500,0));
   db.update("UPDATE wallets SET free_spins=0,locked_bet=0 WHERE player_id=?",u.id());
   String run=id();auto.start(u,run,10,500,0,false);
-  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",id(),DragonTigerEngine.Side.TIE,500,0));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",bettingRound(),id(),DragonTigerEngine.Side.TIE,500,0));
   auto.stop(u,run);
   String request=id();
   try(var pool=Executors.newFixedThreadPool(4)){
-   var tasks=new ArrayList<Callable<DragonTigerService.Round>>();for(int i=0;i<4;i++)tasks.add(()->dragonTiger.play(u,"CLUB",request,DragonTigerEngine.Side.TIGER,500,0));
+   var tasks=new ArrayList<Callable<DragonTigerService.Round>>();for(int i=0;i<4;i++)tasks.add(()->dragonTiger.play(u,"CLUB",bettingRound(),request,DragonTigerEngine.Side.TIGER,500,0));
    var results=pool.invokeAll(tasks);var first=results.getFirst().get();for(var result:results)assertEquals(first,result.get());
   }
   assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM round_ledger WHERE player_id=?",Integer.class,u.id()));
-  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",id(),DragonTigerEngine.Side.TIE,500,0));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",bettingRound(),id(),DragonTigerEngine.Side.TIE,500,0));
   db.update("UPDATE wallets SET balance=0 WHERE player_id=?",u.id());
-  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",id(),DragonTigerEngine.Side.TIE,500,1));
+  assertThrows(GameService.ApiError.class,()->dragonTiger.play(u,"CLUB",bettingRound(),id(),DragonTigerEngine.Side.TIE,500,1));
  }
  @Test void dragonTigerEndpointsRequireAuthAndCsrf()throws Exception{
+  mvc.perform(get("/api/dragon-tiger/table")).andExpect(status().isOk()).andExpect(jsonPath("$.secondsRemaining").isNumber());
   mvc.perform(get("/api/dragon-tiger/rounds")).andExpect(status().isUnauthorized());
-  mvc.perform(post("/api/dragon-tiger/rounds").header("X-Game-Client","web").contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\""+id()+"\",\"side\":\"DRAGON\",\"betCents\":500,\"expectedRevision\":0}")).andExpect(status().isUnauthorized());
+  mvc.perform(post("/api/dragon-tiger/rounds").header("X-Game-Client","web").contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\""+id()+"\",\"tableRoundId\":"+bettingRound()+",\"side\":\"DRAGON\",\"betCents\":500,\"expectedRevision\":0}")).andExpect(status().isUnauthorized());
   var t=tree();var login=accounts.login(t.player().username(),"test-only-user-password");var cookie=new Cookie("ACE_SESSION",login.token());
-  mvc.perform(post("/api/dragon-tiger/rounds").cookie(cookie).header("X-Game-Client","web").contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\""+id()+"\",\"side\":\"DRAGON\",\"betCents\":500,\"expectedRevision\":0}")).andExpect(status().isForbidden());
+  mvc.perform(post("/api/dragon-tiger/rounds").cookie(cookie).header("X-Game-Client","web").contentType(MediaType.APPLICATION_JSON).content("{\"requestId\":\""+id()+"\",\"tableRoundId\":"+bettingRound()+",\"side\":\"DRAGON\",\"betCents\":500,\"expectedRevision\":0}")).andExpect(status().isForbidden());
  }
+ long bettingRound(){for(int i=0;i<120;i++){var table=dragonTiger.table();if(table.phase().equals("BETTING")&&table.secondsRemaining()>1)return table.roundId();try{Thread.sleep(50);}catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}}throw new AssertionError("No Dragon Tiger betting window");}
  @Autowired AgentMembership memberships;
  @Autowired HierarchyChips hierarchyChips;
  @Autowired LobbyGameService lobby;
