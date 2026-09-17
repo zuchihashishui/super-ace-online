@@ -1,4 +1,8 @@
-package vn.emerald.ace;
+package philip.emerald.ace.Utils;
+import philip.emerald.ace.superace.LobbyAutoService;
+import philip.emerald.ace.AceApplication;
+import philip.emerald.ace.superace.LobbyGameService;
+import philip.emerald.ace.superace.GameService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.flywaydb.core.Flyway;

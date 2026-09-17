@@ -1,6 +1,6 @@
--- Super Ace database schema V16 (MySQL 8+)
+-- Super Ace database schema V19 (MySQL 8+)
 -- FRESH INSTALL ONLY. Do not import this file into an existing populated database.
--- For existing V4–V15 databases use the matching upgrade file, OR simply start the new server.
+-- For existing V4–V18 databases use the matching upgrade file, OR simply start the new server.
 -- Default Creator: zuchiha / 112357. Password is stored as a BCrypt hash.
 CREATE DATABASE IF NOT EXISTS ace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE ace;
@@ -259,6 +259,50 @@ ALTER TABLE lobby_round_ledger ADD COLUMN cg_settled BOOLEAN NOT NULL DEFAULT TR
 CREATE INDEX ledger_color_pending ON round_ledger(cg_settled,game_round_id);
 CREATE INDEX lobby_color_pending ON lobby_round_ledger(cg_settled,game_round_id);
 
+-- V17__crash.sql
+CREATE TABLE crash_rounds (
+ round_id BIGINT PRIMARY KEY,
+ starts_at BIGINT NOT NULL,
+ flight_at BIGINT NOT NULL,
+ crash_at BIGINT NOT NULL,
+ next_at BIGINT NOT NULL,
+ crash_bps INT NOT NULL
+);
+CREATE TABLE crash_table_state (id INT PRIMARY KEY, round_id BIGINT NOT NULL);
+INSERT INTO crash_table_state(id,round_id) VALUES(1,0);
+ALTER TABLE round_ledger ADD COLUMN crash_due_at BIGINT DEFAULT NULL;
+ALTER TABLE lobby_round_ledger ADD COLUMN crash_due_at BIGINT DEFAULT NULL;
+CREATE INDEX ledger_crash_due ON round_ledger(crash_due_at);
+CREATE INDEX lobby_crash_due ON lobby_round_ledger(crash_due_at);
+
+-- V18__mines.sql
+CREATE TABLE mines_boards (
+ player_id VARCHAR(36) NOT NULL,
+ mode VARCHAR(8) NOT NULL,
+ request_id VARCHAR(36) NOT NULL,
+ mines_json VARCHAR(200) NOT NULL,
+ PRIMARY KEY(player_id,mode,request_id),
+ FOREIGN KEY(player_id) REFERENCES accounts(id)
+);
+ALTER TABLE round_ledger ADD COLUMN mines_active BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE lobby_round_ledger ADD COLUMN mines_active BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX ledger_mines_active ON round_ledger(player_id,mines_active);
+CREATE INDEX lobby_mines_active ON lobby_round_ledger(player_id,mines_active);
+
+-- V19__lucky_nine.sql
+CREATE TABLE lucky_nine_deals (
+ player_id VARCHAR(36) NOT NULL,
+ mode VARCHAR(8) NOT NULL,
+ request_id VARCHAR(36) NOT NULL,
+ deck_json VARCHAR(300) NOT NULL,
+ PRIMARY KEY(player_id,mode,request_id),
+ FOREIGN KEY(player_id) REFERENCES accounts(id)
+);
+ALTER TABLE round_ledger ADD COLUMN ln_active BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE lobby_round_ledger ADD COLUMN ln_active BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX ledger_ln_active ON round_ledger(player_id,ln_active);
+CREATE INDEX lobby_ln_active ON lobby_round_ledger(player_id,ln_active);
+
 
 -- Club and management seed. All four default accounts use password 112357.
 INSERT INTO accounts(id,username,display_name,password_hash,role,parent_id,public_code,commission_bps,created_at) VALUES
@@ -294,3 +338,6 @@ INSERT INTO flyway_schema_history(installed_rank,version,description,type,script
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(14,'14','dragon tiger table totals','SQL','V14__dragon_tiger_table_totals.sql',-854339490,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(15,'15','daily lobby gold','SQL','V15__daily_lobby_gold.sql',-972351333,CURRENT_USER(),0,1);
 INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(16,'16','color game','SQL','V16__color_game.sql',-1735832447,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(17,'17','crash','SQL','V17__crash.sql',1426965737,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(18,'18','mines','SQL','V18__mines.sql',1210568882,CURRENT_USER(),0,1);
+INSERT INTO flyway_schema_history(installed_rank,version,description,type,script,checksum,installed_by,execution_time,success) VALUES(19,'19','lucky nine','SQL','V19__lucky_nine.sql',1082792979,CURRENT_USER(),0,1);

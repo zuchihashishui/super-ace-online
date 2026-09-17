@@ -1,0 +1,27 @@
+PASS Bingo: guest/register, five widths, lost accepted response/reload once, card/calls/line/payout parity, 30-ball view, 20-bet history, hidden-tab completion, wallet isolation, Filipino.
+RUN /tmp/superace_browser.py
+PASS Super Ace collection: mobile drawer, five arcade game entries, UI registration, 6-character password, 10k Gold/zero chips, real spin, lost spin response exact recovery, logout/login, Filipino.
+RUN /tmp/sakla_browser.py
+PASS Sakla + effects: guest, register, five widths, 20 pairs, lost response/reload once, selection/payout, Club isolation, Filipino, positive-net-only celebration, 3D dice lifecycle.
+RUN /tmp/lucky9_browser.py
+PASS Lucky 9: guest/register, five widths, hidden banker, hit/stand, accepted move lost and retried once, active-hand reload, tie, responsive fixed decisions, positive win, Club isolation, Filipino and sound.
+RUN /tmp/arcade_browser.py
+PASS Plinko: guest/register, responsive five widths, lost accepted response/reload exactly once, route/bin/payout parity, 20-bet history, wallet isolation, language and audio.
+RUN /tmp/wheel_browser.py
+PASS Wheel: guest/register, responsive five widths, lost accepted response/reload exactly once, route/bin/payout parity, 20-bet history, wallet isolation, language and audio.
+RUN /tmp/slots_browser.py
+PASS Slots: guest/register, responsive five widths, lost accepted response/reload exactly once, route/bin/payout parity, 20-bet history, wallet isolation, language and audio.
+RUN /tmp/mines_browser.py
+PASS Mines: guest/register, five responsive sizes and touch tiles, hidden board, lost move response/reload once, exact safe-tile cashout, duplicate cashout, mine loss, wallet lock/isolation, Filipino and sound.
+RUN /tmp/crash_browser.py
+PASS Crash packaged JAR: guest/register, 5 responsive widths, hidden crash point, lost response retry, reload, offline server auto cashout, manual payout/idempotency, wallet lock/isolation, Filipino and sound.
+RUN /tmp/dt_browser_only.py
+PASS Chromium: chip selection, rapid cumulative/multi-side bets, hidden outcomes, 10-second clock, settlement, reload/retry idempotency, wallet isolation, responsive touch targets, Filipino, audio signal/mute/persistence and card inspection.
+RUN /tmp/color_browser.py
+PASS Color Game: responsive desktop/mobile, guest/register, stacked chips, hidden outcomes, exact payouts, retry/reload, history, Filipino, audio, two players and wallet isolation.
+RUN /tmp/color_recovery.py
+PASS recovery: delayed snapshot, accepted response lost/retry charged once, offline betting lock/reconnect, Dragon Tiger win/refund/loss/deduplication/reduced motion.
+ALL V26 PACKAGED REGRESSIONS PASSED
+RUN color
+PASS Color Game: responsive desktop/mobile, guest/register, stacked chips, hidden outcomes, exact payouts, retry/reload, history, Filipino, audio, two players and wallet isolation.
+ALL SELECTED BROWSER CHECKS PASSED

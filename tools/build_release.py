@@ -5,7 +5,7 @@ For a standard build use: cd server && mvn clean package
 import sys, pathlib, zipfile, io, hashlib
 root=pathlib.Path(__file__).resolve().parents[1]
 classes=pathlib.Path(sys.argv[1]).resolve()
-assert (classes/'vn/emerald/ace/LobbyGameService.class').is_file(), 'Compile all Java sources first'
+assert (classes/'philip/emerald/ace/superace/LobbyGameService.class').is_file(), 'Compile all Java sources first'
 jar=root/'release/super-ace-online-13.0.0.jar'
 original=jar.read_bytes()
 updates={}
@@ -16,8 +16,17 @@ with zipfile.ZipFile(io.BytesIO(original)) as old,zipfile.ZipFile(jar,'w') as ou
  assert old.testzip() is None
  for info in old.infolist():
   # Drop obsolete compiled inner classes when replacing the whole package.
-  if info.filename.startswith('BOOT-INF/classes/vn/emerald/ace/') and info.filename.endswith('.class') and info.filename not in updates:continue
+  if info.filename.startswith('BOOT-INF/classes/vn/emerald/ace/'):continue
+  if info.filename.startswith('BOOT-INF/classes/philip/emerald/ace/') and info.filename.endswith('.class') and info.filename not in updates:continue
+  if info.filename=='META-INF/MANIFEST.MF':
+   out.writestr(info,old.read(info).replace(b'vn.emerald.ace.AceApplication',b'philip.emerald.ace.AceApplication'));continue
   out.writestr(info,updates.pop(info.filename,old.read(info)))
+ directories=set()
+ for name in list(updates)+out.namelist():
+  for parent in pathlib.PurePosixPath(name).parents:
+   if str(parent)!='.':directories.add(str(parent)+'/')
+ for directory in sorted(directories):
+  if directory not in out.namelist():out.writestr(directory,b'')
  for name,data in updates.items():out.writestr(name,data,compress_type=zipfile.ZIP_DEFLATED)
 with zipfile.ZipFile(jar) as z:
  assert z.testzip() is None

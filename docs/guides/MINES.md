@@ -1,0 +1,13 @@
+# Mines — V23 application / V18 database
+
+Choose 1, 3, 5 or 10 mines on a 25-tile board and a stake of 5–500. SecureRandom Fisher–Yates selects the positions uniformly without replacement before the first reveal. Safe tiles increase the collectible gross return. A mine loses the stake; cashout is allowed after one safe reveal; all safe tiles automatically cash out. No round cancellation or changing the mine count after starting.
+
+After k safe reveals with m mines, multiplier in hundredths = floor(97 × C(25,k) / C(25−m,k)). Gross payout is floor(stakeCents × multiplier / 100). This produces a theoretical return no greater than 97% for a fixed stopping count, reduced by integer rounding. It is independent of Super Ace settings. Potential high payouts are shown before choosing the next tile; this remains a virtual-chip game, not an externally audited gambling platform.
+
+The secret board is persisted in mines_boards, scoped by account, wallet and initial wager ID. Public responses contain null mine positions while active. The completed round reveals mine positions for review. Safe selections and cashouts acquire the wallet lock. Repeating an already-open tile does not advance it again. Repeating cashout returns the completed receipt without a second credit. A lost response is retried with the same wager ID and tile; reload restores the server's active round.
+
+One active Mines round per account/wallet. All playable roles may play; guests can inspect but must sign in to start. UI includes 5×5 touch targets, chips, sound, English/Filipino, 20-bet history, and a fixed cashout control on mobile while a round is active so it remains reachable while selecting tiles.
+
+V18 migration adds mines_boards and indexed active markers to both existing ledgers. Existing balances and Crash rounds are preserved. Club reports include the single reserved stake and eventual return. Stop the prior server, retain database/configuration and run start.bat; Flyway applies V18. Fresh database/super_ace.sql and matching older→V18 manual upgrades are regenerated. Do not reimport the fresh SQL into an existing database.
+
+Tests cover multiplier arithmetic/rounding for every allowed mine count and reveal count; 4,000 valid random boards; hidden mine positions; concurrent same-tile selection; cashout retries; full-safe-board completion; loss; ownership; cross-game request reuse; and V17→V18 migration preservation. Full backend suite: 75 passed. Browser tests use actual JAR, H2 MySQL compatibility and Chromium at 320/390/760/844/1440 widths. No production test hooks were added: deterministic mine positions are injected directly into the isolated test database by the harness. Live MySQL, native Windows and physical devices were not available.

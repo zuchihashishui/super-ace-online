@@ -8,7 +8,7 @@ Object.assign(filipino,{
 });
 function modeUI(){
  if(!$('chooseLobby'))return;
- const locked=(typeof dtLocked==='function'&&dtLocked())||(typeof cgLocked==='function'&&cgLocked())||rtpSaving||modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
+ const locked=(typeof dtLocked==='function'&&dtLocked())||(typeof cgLocked==='function'&&cgLocked())||(typeof crLocked==='function'&&crLocked())||(typeof arLocked==='function'&&arLocked())||(typeof lnLocked==='function'&&lnLocked())||(typeof mnLocked==='function'&&mnLocked())||rtpSaving||modeChanging||busy||polling||Boolean(pending)||autoActive()||free>0;
  const lobby=gameMode==='LOBBY';
  $('chooseClub').querySelector('b').textContent='LUCKY SEVEN';
  $('chooseClub').querySelector('small').textContent='CLUB · 686868';
@@ -22,10 +22,10 @@ function modeUI(){
  document.body.dataset.playMode=gameMode;
 }
 async function switchMode(next){
- if((typeof dtLocked==='function'&&dtLocked())||(typeof cgLocked==='function'&&cgLocked()))return;
+ if((typeof dtLocked==='function'&&dtLocked())||(typeof cgLocked==='function'&&cgLocked())||(typeof crLocked==='function'&&crLocked())||(typeof arLocked==='function'&&arLocked())||(typeof lnLocked==='function'&&lnLocked())||(typeof mnLocked==='function'&&mnLocked()))return;
  if(!['LOBBY','CLUB'].includes(next)||next===gameMode||rtpSaving||modeChanging||busy||polling||pending||autoActive()||free>0)return;
  if(player&&!canPlay())return;
- const previous=gameMode;modeChanging=true;gameMode=next;update();
+ if(typeof hideVictory==='function')hideVictory();const previous=gameMode;modeChanging=true;gameMode=next;update();
  try{
   if(player){const wallet=await api('me');applyWallet(wallet);ready=canPlay(wallet);}
   last=0;seenRound=0;autoRun=null;pending=null;
@@ -35,7 +35,7 @@ async function switchMode(next){
   $('status').textContent=gameMode==='LOBBY'?'LOBBY · Gold':'LUCKY SEVEN · 686868 · chips';
  }catch(error){gameMode=previous;toast(errorText(error));}
  finally{modeChanging=false;update();}
- await loadRtp();await syncAuto(false);if(typeof dtLoad==='function'&&activeView==='dragonTigerView')await dtLoad();if(typeof cgLoad==='function'&&activeView==='colorGameView')await cgLoad();
+ await loadRtp();await syncAuto(false);if(typeof dtLoad==='function'&&activeView==='dragonTigerView')await dtLoad();if(typeof cgLoad==='function'&&activeView==='colorGameView')await cgLoad();if(typeof crLoad==='function'&&activeView==='crashView')await crLoad();if(typeof arLoad==='function'&&activeView==='arcadeView')await arLoad();if(typeof mnLoad==='function'&&activeView==='minesView')await mnLoad();if(typeof lnLoad==='function'&&activeView==='luckyNineView')await lnLoad();
 }
 $('chooseLobby').onclick=()=>switchMode('LOBBY');$('chooseClub').onclick=()=>switchMode('CLUB');
 // Migrate a pending request from the one-wallet release into CLUB only.

@@ -19,3 +19,22 @@ All user and technical guides are in `docs/guides/`.
 - [Dragon Tiger Jade / one-card rules — V16](guides/DRAGON-TIGER-JADE.md)
 
 - [Color Game — V17](guides/COLOR-GAME.md)
+
+## Current game collection — V27
+
+Eleven games: Super Ace, Dragon Tiger, Color Game, Crash, Plinko, Lucky Wheel, Seven Slots, Mines, Sakla, Lucky 9 and Bingo. Database schema V19. Each staged ZIP contains all earlier games. All requested menu games are playable.
+
+- [Sakla and effects — V24](guides/V24-SAKLA.md)
+- [Lucky 9 — V25](guides/LUCKY-NINE.md)
+- [Bingo — V26](guides/BINGO.md)
+- [Final verification — V26](guides/V26-VERIFICATION.md)
+
+- [Java package map](guides/JAVA-PACKAGES.md)
+
+- [Color Game payout / 3-color limit / dice — V27](guides/V27-COLOR-GAME.md)
+
+- [V28 Plinko animation fixes](guides/V28-PLINKO-MOTION.md)
+
+- [V29 Plinko frame guards and session recovery](guides/V29-PLINKO-GUARDS.md)
+
+- [V30 Color Game top-face correction](guides/V30-COLOR-TOP-FACE.md)

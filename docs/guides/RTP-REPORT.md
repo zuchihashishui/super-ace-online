@@ -25,7 +25,7 @@ Reproduce from project root (Java 21):
 
 ```sh
 mkdir -p /tmp/ace-sim
-javac -d /tmp/ace-sim server/src/main/java/vn/emerald/ace/GameEngine.java tools/Simulate.java
+javac -d /tmp/ace-sim server/src/main/java/philip/emerald/ace/superace/GameEngine.java tools/Simulate.java
 java -Xmx256m -cp /tmp/ace-sim Simulate 10000000 771 INTRO_97
 java -Xmx256m -cp /tmp/ace-sim Simulate 10000000 991 STANDARD_96
 ```

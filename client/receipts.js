@@ -4,7 +4,7 @@ const receiptDialog=document.createElement('dialog');receiptDialog.id='chipRecei
 receiptDialog.innerHTML='<div class="receipt-symbol" aria-hidden="true">◉</div><h2 id="receiptTitle" data-i18n="Chips received">Chips received</h2><strong id="receiptAmount"></strong><p id="receiptPlace">LUCKY SEVEN · 686868</p><p id="receiptSender"></p><button type="button" id="receiptRead" class="primary" data-i18n="Received">Received</button>';
 document.body.append(receiptDialog);let receiptOwner=null,receiptCurrent=null,receiptPolling=false;
 async function pollReceipts(){
- if(receiptPolling||!canPlay())return;
+ if(receiptPolling||!ready||!canPlay())return;
  if(receiptCurrent&&receiptOwner!==player.id){receiptDialog.close();receiptCurrent=null;}
  if(receiptCurrent||document.querySelector('dialog[open]'))return;
  const owner=player.id;receiptPolling=true;
