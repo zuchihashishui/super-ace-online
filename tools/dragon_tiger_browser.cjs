@@ -13,9 +13,9 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
   await page.locator('#dtAudioButton').click();await page.locator('#dtAudioTest').click();await page.waitForFunction(()=>audioCtx?.state==='running');assert(await page.evaluate(()=>sound&&volume>0));
   assert(await page.evaluate(async()=>{const analyser=audioCtx.createAnalyser();analyser.fftSize=2048;masterGain.connect(analyser);dtCue('win');let peak=0;for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,35));const values=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(values);for(const v of values)peak=Math.max(peak,Math.abs(v))}masterGain.disconnect(analyser);analyser.disconnect();return peak>0.001}),'sound must produce a non-zero audio signal');
   await page.locator('#dtVolume').evaluate(e=>{e.value='35';e.dispatchEvent(new Event('input',{bubbles:true}))});assert.equal(await page.evaluate(()=>volume),.35);await page.locator('#dtAudioToggle').click();assert.equal(await page.evaluate(()=>sound),false);await page.waitForFunction(()=>masterGain.gain.value===0);await page.locator('#dtAudioToggle').click();await page.locator('#dtAudioClose').click();
-  for(const width of [320,390,760,1440]){
-   await page.setViewportSize({width,height:width>760?1000:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'overflow '+width);
-   const chipPanel=await page.locator('.dt-chip-console').boundingBox(),betPanel=await page.locator('.dt-bets').boundingBox();assert(chipPanel.y+chipPanel.height<=betPanel.y+1,'chip controls must not obscure betting totals '+width);
+  for(const width of [320,390,760,844,1440]){
+   await page.setViewportSize({width,height:width===844?390:width>760?1000:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'overflow '+width);
+   const chipPanel=await page.locator('.dt-chip-console').boundingBox(),betPanel=await page.locator('.dt-bets').boundingBox();assert(betPanel.y+betPanel.height<=chipPanel.y+1,'chip controls must not obscure betting totals '+width);
    for(const selector of ['[data-dt-chip="5"]','[data-dt-chip="20"]','[data-dt-side=DRAGON]']){const r=await page.locator(selector).boundingBox();assert(r.width>=44&&r.height>=44,'touch target '+selector)}
    if(process.env.ACE_SCREENSHOTS){fs.mkdirSync(process.env.ACE_SCREENSHOTS,{recursive:true});await page.screenshot({path:process.env.ACE_SCREENSHOTS+'/chips-'+width+'.png',fullPage:true})}
   }
@@ -33,11 +33,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
   // Reload must restore all accepted chips from the server, not just the last click.
   await page.reload();await page.waitForFunction(()=>ready&&!polling);await page.evaluate(()=>showView('dragonTigerView'));await page.waitForFunction(()=>dtBets.length===5);
   await page.waitForFunction(id=>dtLast?.tableRoundId===id&&!dtBusy,round,{timeout:20000});const first=await page.evaluate(()=>dtLast);
-  assert.equal(first.betCents,5500);assert.equal(await page.locator('.dt-card.revealed').count(),4);assert.equal(await page.evaluate(()=>balance),before-55+first.payoutCents/100);assert(await page.locator('[data-dt-side=DRAGON]').isDisabled());
+  assert.equal(first.betCents,5500);assert.equal(await page.locator('.dt-card.revealed').count(),2);assert.equal(await page.evaluate(()=>balance),before-55+first.payoutCents/100);assert(await page.locator('[data-dt-side=DRAGON]').isDisabled());
   assert.equal(await page.locator('#dtDeal').count(),0);
   const historyRow=page.locator('.dt-history-row[data-round-id="'+round+'"]');assert.equal(await historyRow.count(),1);assert.match(await historyRow.textContent(),/Bet 55/);assert.match(await historyRow.textContent(),/DRAGON 30/);
   assert.equal(await page.evaluate(()=>volume),.35);assert.equal(await page.evaluate(()=>sound),true);
-  await page.locator('#dtRoad .dt-bead').last().click();assert.equal(await page.locator('#dtInspect').evaluate(e=>e.open),true);assert.equal(await page.locator('#dtInspect .dt-card.revealed').count(),4);await page.locator('#dtInspectClose').click();assert.equal(await page.locator('#dtHistorySummary>span').count(),3);
+  await page.locator('#dtRoad .dt-bead').last().click();assert.equal(await page.locator('#dtInspect').evaluate(e=>e.open),true);assert.equal(await page.locator('#dtInspect .dt-card.revealed').count(),2);await page.locator('#dtInspectClose').click();assert.equal(await page.locator('#dtHistorySummary>span').count(),3);
   await page.evaluate(()=>{const saved=dtTableRows;dtTableRows=Array.from({length:25},(_,i)=>({...saved[0],tableRoundId:900000-i}));dtHistoryRender();if(document.querySelectorAll('.dt-history-row').length!==20||document.querySelectorAll('.dt-bead').length!==20)throw Error('History must display exactly 20 games');dtTableRows=saved;dtHistoryRender()});
   // A response can be lost after acceptance: the same UUID must never charge twice.
   await page.waitForFunction(id=>dtTableState.roundId!==id&&dtBetting()&&dtTableState.bettingClosesAt-dtServerNow()>6500&&!dtBusy,round,{timeout:20000});

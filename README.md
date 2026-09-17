@@ -1,8 +1,8 @@
-# Current update: Dragon Tiger chip stacks and multiplayer totals, schema V14
+# Current update: Dragon Tiger chip stacks and multiplayer totals, schema V15
 
 Chip denominations now stack visually on each side with exact counts and amounts. Other players' confirmed stakes appear separately, excluding the current player and keeping Lobby/Club separate. Responsive controls sit directly above betting areas without hiding totals. See [multiplayer notes](docs/guides/DRAGON-TIGER-MULTIPLAYER.md). Flyway applies V14 indexes automatically.
 
-The latest presentation adds a compact emerald table, mobile chip controls, chip flights, round-state banners, dedicated sound/volume controls with saved preferences, full screen where supported, and tappable 20-game history for reviewing cards. See [presentation notes](docs/guides/DRAGON-TIGER-PRESENTATION.md). The two-card rules and paytable are unchanged.
+The earlier presentation added a compact emerald table, mobile chip controls, chip flights, round-state banners, dedicated sound/volume controls with saved preferences, full screen where supported, and tappable 20-game history for reviewing cards. See [presentation notes](docs/guides/DRAGON-TIGER-PRESENTATION.md). V16 replaces the table artwork and changes new rounds to one card per side; the paytable remains unchanged.
 
 The history panel now shows the last 20 completed table games, one row per game, combining all chip clicks into per-side stakes and total bet/payout/net. Guests can view public results. Cards open automatically after the 10-second countdown; there is no Deal Card button. This history update requires no new database migration.
 
@@ -64,3 +64,7 @@ Bắt đầu với [UPGRADE-V13.md](docs/guides/UPGRADE-V13.md): cấu hình loc
 - Kiểm thử: [VERIFICATION.md](docs/guides/VERIFICATION.md)
 
 Game độc lập dùng chip ảo, lấy cảm hứng từ Super Ace. Không phải sản phẩm của JILI.
+
+Daily Lobby reward: every account receives 10,000 Gold once per Asia/Manila calendar day, with a persistent receipt popup. See docs/guides/DAILY-LOBBY-GOLD.md.
+
+Release V16: Dragon Tiger now deals one card per side (A low, K high) with a Jade temple UI. Database schema remains V15. See docs/guides/DRAGON-TIGER-JADE.md for payout rules and upgrade compatibility.

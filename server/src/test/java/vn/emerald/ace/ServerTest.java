@@ -17,7 +17,33 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ServerTest {
 
+ @Autowired DailyLobbyGold dailyGold;
+ @Autowired ChipNotifications chipNotices;
+ @Test void dailyLobbyRewardIsAdditiveIsolatedAndAcknowledged() throws Exception {
+  var u=tree().player();var other=tree().player();var day=LocalDate.of(2030,1,2);
+  long before=lobby.wallet(u.id(),false).balanceCents(),club=game.wallet(u.id(),false).balanceCents();
+  try(var pool=Executors.newFixedThreadPool(4)){
+   var futures=new ArrayList<Future<?>>();for(int i=0;i<8;i++)futures.add(pool.submit(()->dailyGold.grant(u.id(),day)));
+   for(var f:futures)f.get();
+  }
+  assertEquals(before+1000000,lobby.wallet(u.id(),false).balanceCents());
+  assertEquals(club,game.wallet(u.id(),false).balanceCents());
+  var notices=chipNotices.unread(u);assertEquals(1,notices.size());assertEquals("GOLD",notices.getFirst().currency());
+  assertThrows(GameService.ApiError.class,()->chipNotices.read(other,notices.getFirst().id()));
+  chipNotices.read(u,notices.getFirst().id());chipNotices.read(u,notices.getFirst().id());assertTrue(chipNotices.unread(u).isEmpty());
+  dailyGold.grant(u.id(),day);assertEquals(before+1000000,lobby.wallet(u.id(),false).balanceCents());
+  dailyGold.grant(u.id(),day.plusDays(1));assertEquals(before+2000000,lobby.wallet(u.id(),false).balanceCents());assertEquals(1,chipNotices.unread(u).size());
+ }
  @Autowired DragonTigerService dragonTiger;
+ @Test void legacyUnsettledRoundKeepsTwoCardsAndNewRoundsUseOne(){
+  var u=tree().player();long round=123456L,close=round*DragonTigerService.CYCLE_MS+DragonTigerService.BETTING_MS;
+  var row=new DragonTigerService.Round(id(),"LOBBY",round,close,DragonTigerEngine.Side.DRAGON,500,0,1000000,999500,1,close-1000,null);
+  db.update("INSERT INTO lobby_round_ledger(player_id,request_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,response_json,created_at,rtp_profile,game_type,game_round_id,dt_settled) VALUES(?,?,500,500,0,FALSE,1,?,?,'DT_TWO_CARD_V2','DRAGON_TIGER',?,FALSE)",u.id(),row.requestId(),lobby.encode(row),row.createdAt(),round);
+  dragonTiger.settle("LOBBY",u.id(),close);var old=dragonTiger.historyAt(u,"LOBBY",close).getFirst();assertEquals(2,old.outcome().dragon().size());assertEquals(2,old.outcome().tiger().size());
+  var modern=dragonTiger.tableAt((round+1)*DragonTigerService.CYCLE_MS+DragonTigerService.BETTING_MS).outcome();assertEquals(1,modern.dragon().size());assertEquals(1,modern.tiger().size());
+  assertEquals(old.outcome(),dragonTiger.tableAt(close).outcome());
+ }
+
  @Test void dragonTigerCrowdExcludesViewerAndSeparatesCurrencies()throws Exception{
   var a=tree().player();var b=tree().player();long round=bettingRound();
   var first=dragonTiger.play(a,"LOBBY",round,id(),DragonTigerEngine.Side.DRAGON,500,0);

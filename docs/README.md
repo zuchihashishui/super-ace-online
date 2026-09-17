@@ -13,3 +13,7 @@ All user and technical guides are in `docs/guides/`.
 - [Authentication](guides/SIMPLE-AUTH.md)
 - [Mobile UI](guides/MOBILE-UI.md)
 - [Verification](guides/VERIFICATION.md)
+
+- [Daily Lobby Gold — V15](guides/DAILY-LOBBY-GOLD.md)
+
+- [Dragon Tiger Jade / one-card rules — V16](guides/DRAGON-TIGER-JADE.md)

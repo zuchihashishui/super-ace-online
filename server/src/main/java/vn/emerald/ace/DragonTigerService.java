@@ -39,7 +39,9 @@ public class DragonTigerService {
  DragonTigerEngine.Outcome shared(long id){
   var rows=club.db().queryForList("SELECT outcome_json FROM dragon_tiger_rounds WHERE round_id=?",String.class,id);
   if(!rows.isEmpty())return club.decode(rows.getFirst(),DragonTigerEngine.Outcome.class);
-  var outcome=engine.deal();
+  boolean legacy=false;
+  for(var game:List.of(club,lobby))if(game.db().queryForObject("SELECT COUNT(*) FROM "+game.table("round_ledger")+" WHERE game_type='DRAGON_TIGER' AND game_round_id=? AND rtp_profile='DT_TWO_CARD_V2'",Integer.class,id)>0)legacy=true;
+  var outcome=legacy?engine.dealLegacy():engine.deal();
   try{club.db().update("INSERT INTO dragon_tiger_rounds(round_id,starts_at,betting_closes_at,reveal_ends_at,outcome_json) VALUES(?,?,?,?,?)",id,startsAt(id),startsAt(id)+BETTING_MS,startsAt(id)+CYCLE_MS,club.encode(outcome));return outcome;}
   catch(DuplicateKeyException ignored){return club.decode(club.db().queryForObject("SELECT outcome_json FROM dragon_tiger_rounds WHERE round_id=? FOR UPDATE",String.class,id),DragonTigerEngine.Outcome.class);}
  }
@@ -59,13 +61,15 @@ public class DragonTigerService {
   if(game.db().queryForObject("SELECT COUNT(*) FROM "+game.table("auto_jobs")+" WHERE player_id=? AND active=TRUE",Integer.class,u.id())>0)throw GameService.error(409,"AUTO_ACTIVE");
   if(w.freeSpins()>0)throw GameService.error(409,"BET_LOCKED");if(w.revision()!=revision)throw GameService.error(409,"STALE_STATE");
   if(w.balanceCents()<bet)throw GameService.error(409,"INSUFFICIENT_FUNDS");
+  // Persist the shared rules/outcome at first accepted bet; never expose cards before close.
+  var tableOutcome=shared(current);
   // Reserve only the stake while betting is open. No early winnings or outcome leak.
   long payout=0,balance=w.balanceCents()-bet,revealAt=close;
   var result=new Round(requestId,mode,tableRoundId,revealAt,side,bet,payout,w.balanceCents(),balance,w.revision()+1,time,null);
   game.db().update("UPDATE "+game.table("wallets")+" SET balance=?,revision=?,last_spin=? WHERE player_id=?",balance,result.revision(),time,u.id());
   var agent=u.role()==Accounts.Role.AGENT?u:(u.role()==Accounts.Role.PLAYER&&u.parentId()!=null?accounts.user(u.parentId()):null);
   game.db().update("INSERT INTO "+game.table("round_ledger")+"(player_id,request_id,agent_id,super_agent_id,nominal_bet,wager_cents,payout_cents,is_free,wallet_revision,response_json,created_at,rtp_profile,game_type,game_round_id,dt_settled) VALUES(?,?,?,?,?,?,?,FALSE,?,?,?,?,?,?,FALSE)",
-   u.id(),requestId,agent==null?null:agent.id(),u.role()==Accounts.Role.SUPER_AGENT?u.id():(agent==null?null:agent.parentId()),bet,bet,payout,result.revision(),game.encode(result),time,"DT_TWO_CARD_V2","DRAGON_TIGER",tableRoundId);
+   u.id(),requestId,agent==null?null:agent.id(),u.role()==Accounts.Role.SUPER_AGENT?u.id():(agent==null?null:agent.parentId()),bet,bet,payout,result.revision(),game.encode(result),time,tableOutcome.dragon().size()==1?"DT_ONE_CARD_V3":"DT_TWO_CARD_V2","DRAGON_TIGER",tableRoundId);
   return visible(result,time);
  }
  @Transactional public void settle(String mode,String playerId,long time){
