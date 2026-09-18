@@ -28,7 +28,17 @@ for(const mode of ['native','native-phone','denied','missing','delayed','preexis
   await p.waitForFunction(()=>document.body.classList.contains('cg-rotated'));assert.equal(await p.evaluate(()=>!!document.fullscreenElement),false);await p.locator('#cgMenuToggle').tap();await p.locator('#cgFullscreen').tap();assert.equal(await p.evaluate(()=>fullRequests),mode==='denied'?2:0);await p.evaluate(()=>cgScreenLayout());assert.equal(await p.evaluate(()=>fullRequests),mode==='denied'?2:0);
  }else if(mode==='preexisting'){assert.equal(await p.evaluate(()=>fullRequests),0);}
  
+ 
  assert(await p.locator('#cgMenuOverlay').isHidden());
+ if(mode==='denied'){
+  const code=await (await p.request.get(process.env.ACE_TEST_URL+'/color-game.js')).text();
+  await p.addScriptTag({content:code.slice(code.indexOf('// Decorative flights only:'))});
+  await p.evaluate(()=>{document.body.dataset.cgQuality='high';cgChipFlight(document.querySelector('[data-cg-chip]'),document.querySelector('[data-cg-side]'),5)});
+  assert.equal(await p.locator('.cg-flying-chip').count(),1);
+  await p.waitForTimeout(650);assert.equal(await p.locator('.cg-flying-chip').count(),0);
+  await p.evaluate(()=>{document.body.dataset.cgQuality='battery';cgChipFlight(document.querySelector('[data-cg-chip]'),document.querySelector('[data-cg-side]'),5)});
+  assert.equal(await p.locator('.cg-flying-chip').count(),0);
+ }
  if(mode==='denied')await p.screenshot({path:'/tmp/ace-v39-board.png'});
  await p.locator('#cgMenuToggle').click();assert(await p.locator('#cgMenuPanel').isVisible());
  assert.equal(await p.locator('#cgTable').evaluate(e=>e.inert),true);if(mode==='denied')await p.screenshot({path:'/tmp/ace-v39-menu.png'});

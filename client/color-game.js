@@ -18,7 +18,7 @@ function cgReset(){if(cgOwner===cgKey())return;cgOwner=cgKey();cgGeneration++;cg
 function cgSelected(){return new Set([...cgBets.filter(b=>b.tableRoundId===cgState?.roundId).map(b=>b.side),...cgQueue.filter(q=>q.body.tableRoundId===cgState?.roundId).map(q=>q.body.side)])}
 function cgAmount(side){return cgBets.filter(b=>b.tableRoundId===cgState?.roundId&&(!side||b.side===side)).reduce((n,b)=>n+b.betCents,0)}
 function cgQueued(side){return cgQueue.filter(q=>!side||q.body.side===side).reduce((n,q)=>n+q.body.betCents,0)}
-function cgCue(kind){if(activeView!=='colorGameView'||document.hidden||!sound||!volume)return;openAudio();if(kind==='win'){[523,659,784,1047].forEach((n,i)=>tone(n,.15,'triangle',i*.08))}else if(kind==='roll'){[150,120,95].forEach((n,i)=>tone(n,.06,'triangle',.84+i*.17))}else tone(kind==='tick'?900:kind==='chip'?660:510,.05,'sine')}
+function cgCue(kind){if(activeView!=='colorGameView'||document.hidden||!sound||!volume)return;openAudio();if(kind==='win'){[523,659,784,1047].forEach((n,i)=>tone(n,.15,'triangle',i*.08))}else if(kind==='impact'){[175,120,85].forEach((n,i)=>tone(n,.045,'triangle',i*.085,n*.7))}else if(kind==='roll'){[150,120,95].forEach((n,i)=>tone(n,.06,'triangle',.84+i*.17))}else tone(kind==='tick'?900:kind==='chip'?660:510,.05,'sine')}
 let cgAnimations=[],cgFinishReveal=null;
 function cgStopDice(){cgAnimations.forEach(a=>a.cancel());cgAnimations=[];cgFinishReveal=null;}
 function cgDice(outcome){window.CG3D?.stop();cgStopDice();document.querySelectorAll('.cg-feeder i').forEach((el,i)=>{const c=outcome?.dice[i];el.className=c||'';el.textContent=c?cgSymbols[cgColors.indexOf(c)]:'?';});$('cgDice').replaceChildren(...[0,1,2].map(i=>{const color=outcome?.dice[i],wrap=document.createElement('div');wrap.className='cg-die '+(color||'hidden-die');wrap.setAttribute('aria-label',color?t(color):'Hidden die');const other=cgColors.filter(c=>c!==color),order=color?[...other.slice(0,4),color,other[4]]:cgColors;wrap.innerHTML='<div class="cg-shadow"></div><div class="cg-cube">'+order.map((c,j)=>'<span aria-hidden="true" class="cg-cube-face cf-'+j+(color&&j===4?' result-face':'')+' '+(color?c:'unknown')+'">'+(color?cgSymbols[cgColors.indexOf(c)]:'?')+'</span>').join('')+'</div><small>'+(color?t(color):'')+'</small>';return wrap}));}
@@ -52,7 +52,7 @@ async function cgFetch(){
  }catch(e){if(owner===cgKey()){cgNetworkError=t('Reconnecting…')+' '+errorText(e);cgCrowd=null;cgAuthFailure(e);}}
  finally{cgFetching=false;cgUpdate();if(cgQueue.length&&!cgSending&&ready)void cgDrain();}
 }
-function cgResultText(outcome){const rows=cgBets.filter(b=>b.tableRoundId===cgState?.roundId),payout=rows.reduce((n,b)=>n+b.payoutCents,0),bet=cgAmount(),net=payout-bet;$('cgResult').textContent=outcome.dice.map(c=>t(c)).join(' · ')+(bet?' | '+t('Total bet')+' '+money(bet)+' · '+t('Total returned')+' '+money(payout)+' · '+t('Net')+' '+(net>0?'+':'')+money(net):'');return net;}
+function cgResultText(outcome){const rows=cgBets.filter(b=>b.tableRoundId===cgState?.roundId),payout=rows.reduce((n,b)=>n+b.payoutCents,0),bet=cgAmount(),net=payout-bet;$('cgResult').textContent=outcome.dice.map(c=>t(c)).join(' · ')+(bet?' | '+t('Total bet')+' '+money(bet)+' · '+t('Total returned')+' '+money(payout)+' · '+t('Net')+' '+(net>0?'+':'')+money(net):'');if(net>0)cgReturnChips(outcome);return net;}
 
 function cgReveal(outcome){
  if(!window.CG3D){cgRevealCss(outcome);return;}
@@ -60,7 +60,7 @@ function cgReveal(outcome){
  const current=()=>owner===cgKey()&&generation===cgGeneration&&cgState?.roundId===round;
  const finish=()=>{if(done||!current())return;done=true;cgStopDice();cgBusy=false;$('cgCase').classList.remove('rolling');document.querySelectorAll('[data-cg-side]').forEach(b=>b.classList.toggle('winning',outcome.dice.includes(b.dataset.cgSide)));const net=cgResultText(outcome);if(net>0)celebrateWin('colorGameView',round,cgAmount(),cgAmount()+net);cgUpdate();};
  cgFinishReveal=()=>{window.CG3D.finish();finish()};
- window.CG3D.roll(outcome,{instant:document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches,onImpact:()=>cgCue('roll')}).then(ok=>{if(!current())return;if(ok)finish();else if(!done)cgRevealCss(outcome)}).catch(()=>{if(current()&&!done)cgRevealCss(outcome)});
+ window.CG3D.roll(outcome,{instant:document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches,onImpact:()=>cgCue('impact')}).then(ok=>{if(!current())return;if(ok)finish();else if(!done)cgRevealCss(outcome)}).catch(()=>{if(current()&&!done)cgRevealCss(outcome)});
 }
 function cgRevealCss(outcome){
  const owner=cgOwner,generation=cgGeneration,round=cgState?.roundId;cgBusy=true;clearTimeout(cgRevealTimer);cgDice(outcome);$('cgCase').classList.add('rolling');$('cgResult').textContent=t('Rolling…');cgCue('roll');
@@ -89,7 +89,7 @@ async function cgDrain(){
  if(cgSending||cgBusy||!cgQueue.length||!ready)return;cgSending=true;busy=true;const owner=cgOwner;
  try{while(cgQueue.length&&owner===cgKey()){
   const q=cgQueue[0];if(q.body.expectedRevision===undefined){const w=await api('me?mode='+q.mode);if(owner!==cgKey())break;applyWallet(w);q.body.expectedRevision=revision;cgSave();}
-  try{const r=await api('color-game/rounds?mode='+q.mode,'POST',q.body);if(owner!==cgKey())break;cgQueue.shift();cgMutation++;cgSave();if(r.tableRoundId===cgState?.roundId&&!cgBets.some(b=>b.requestId===r.requestId))cgBets.push(r);cgCue('chip');const w=await api('me?mode='+q.mode);if(owner!==cgKey())break;applyWallet(w);cgUpdate();}
+  try{const r=await api('color-game/rounds?mode='+q.mode,'POST',q.body);if(owner!==cgKey())break;cgQueue.shift();cgMutation++;cgSave();if(r.tableRoundId===cgState?.roundId&&!cgBets.some(b=>b.requestId===r.requestId))cgBets.push(r);cgCue('chip');cgChipFlight(document.querySelector('[data-cg-chip=+(q.body.betCents/100)+]')||document.querySelector('.cg-picker'),document.querySelector('[data-cg-side=+q.body.side+]'),q.body.betCents/100);const w=await api('me?mode='+q.mode);if(owner!==cgKey())break;applyWallet(w);cgUpdate();}
   catch(e){if(e.code==='STALE_STATE'){const w=await api('me?mode='+q.mode);if(owner!==cgKey())break;applyWallet(w);q.body.expectedRevision=revision;cgSave();continue;}if(e.status===401){cgError=errorText(e);cgAuthFailure(e);break;}if(e.status>=400&&e.status<500){cgQueue.shift();cgMutation++;cgSave();cgError=e.code==='COLOR_LIMIT'?t('Maximum 3 colors per round.'):errorText(e);continue;}cgError=t('Connection lost. Retry uses the same request and cannot charge twice.');break;}
  }}catch(e){if(owner===cgKey()){cgError=errorText(e);cgAuthFailure(e);}}finally{cgSending=false;busy=false;cgSave();cgUpdate();}
 }
@@ -124,3 +124,20 @@ $('cgJackpotHelp').onclick=()=>$('cgJackpotDialog').showModal();$('cgJackpotClos
 const cgOldHelp=$('help').onclick;$('help').onclick=()=>activeView==='colorGameView'?$('cgRules').showModal():cgOldHelp();
 const cgOldLanguage=setLanguage;setLanguage=value=>{cgOldLanguage(value);cgHistoryRender();cgUpdate();if(cgState?.outcome&&cgShown===cgState.roundId&&!cgBusy){cgDice(cgState.outcome);cgResultText(cgState.outcome);}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&cgFinishReveal)cgFinishReveal();if(!document.hidden&&activeView==='colorGameView')void cgLoad();});setInterval(cgClock,200);$('cgResult').removeAttribute('data-i18n');cgDice();localize();
+
+// Decorative flights only: balances and outcomes remain server-authoritative.
+const cgReturnSeen=new Set();
+function cgChipFlight(from,to,label='◉'){
+ if(!from||!to||activeView!=='colorGameView'||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches||document.body.dataset.cgQuality==='battery')return;
+ const host=$('colorGameView');if(host.querySelectorAll('.cg-flying-chip').length>=12)return;
+ const bounds=host.getBoundingClientRect(),rotated=document.body.classList.contains('cg-rotated');
+ const point=el=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;return rotated?{x:y-bounds.top+host.scrollLeft,y:bounds.right-x+host.scrollTop}:{x:x-bounds.left+host.scrollLeft,y:y-bounds.top+host.scrollTop}};
+ const a=point(from),b=point(to),coin=document.createElement('i');coin.className='cg-flying-chip';coin.textContent=label;coin.setAttribute('aria-hidden','true');coin.style.left=a.x+'px';coin.style.top=a.y+'px';host.append(coin);
+ const animation=coin.animate([{transform:'translate(-50%,-50%) scale(.7)',opacity:0},{offset:.18,transform:'translate(-50%,-50%) scale(1)',opacity:1},{offset:.6,transform:'translate(calc(-50% + '+((b.x-a.x)*.6)+'px),calc(-50% + '+((b.y-a.y)*.6-25)+'px)) scale(1)'},{transform:'translate(calc(-50% + '+(b.x-a.x)+'px),calc(-50% + '+(b.y-a.y)+'px)) scale(.6)',opacity:0}],{duration:520,easing:'ease-out'});
+ animation.finished.catch(()=>{}).finally(()=>coin.remove());
+}
+function cgReturnChips(outcome){
+ const key=cgOwner+':'+cgState?.roundId;if(cgReturnSeen.has(key))return;
+ cgReturnSeen.add(key);if(cgReturnSeen.size>128)cgReturnSeen.delete(cgReturnSeen.values().next().value);
+ for(const side of new Set(outcome.dice))if(cgAmount(side)>0)cgChipFlight(document.querySelector('[data-cg-side="'+side+'"]'),$('cgBalance'));
+}

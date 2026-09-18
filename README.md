@@ -1,4 +1,8 @@
-# Current update: V39 Color Game menu
+# Current update: V40 adaptive graphics
+
+Color Game adds Auto / High / Battery Saver, refined dice lighting and bounded chip flights. [Details and validation](docs/guides/V40-ADAPTIVE-GRAPHICS.md). No database changes.
+
+# Previous update: V39 Color Game menu
 
 Floating in-game navigation recovers mobile board space. No database changes. [Details](docs/guides/V39-GAME-MENU.md).
 

@@ -8,7 +8,8 @@ function cgScreenLayout(){
  const inGame=activeView==='colorGameView',on=inGame&&cgPhone(),rotated=on&&innerHeight>innerWidth;
  document.body.classList.toggle('cg-immersive',inGame);document.body.classList.toggle('cg-wide',on);document.body.classList.toggle('cg-rotated',rotated);
  document.documentElement.style.setProperty('--cg-screen-w',(rotated?innerHeight:innerWidth)+'px');document.documentElement.style.setProperty('--cg-screen-h',(rotated?innerWidth:innerHeight)+'px');
- if(!inGame){cgCloseMenu(false);cgUnlockOrientation();if(cgOwnFullscreen){cgOwnFullscreen=false;if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});}}
+ if(inGame)window.CG3D?.prepare();
+ if(!inGame){document.querySelectorAll('.cg-flying-chip').forEach(e=>e.remove());cgCloseMenu(false);cgUnlockOrientation();if(cgOwnFullscreen){cgOwnFullscreen=false;if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});}}
 }
 function cgEnterFullscreen(){
  if(activeView!=='colorGameView')return Promise.resolve();
@@ -56,9 +57,14 @@ $('cgMenuOverlay').addEventListener('click',event=>{
 $('cgMenuPanel').addEventListener('keydown',event=>{
  if(event.key==='Escape'){event.preventDefault();cgCloseMenu();}
  if(event.key==='Tab'){
-  const items=[...$('cgMenuPanel').querySelectorAll('button:not(:disabled)')].filter(e=>e.getClientRects().length);
+  const items=[...$('cgMenuPanel').querySelectorAll('button:not(:disabled),select:not(:disabled)')].filter(e=>e.getClientRects().length);
   const first=items[0],last=items.at(-1);
   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
  }
 });
+
+Object.assign(filipino,{'Graphics quality':'Kalidad ng graphics','High':'Mataas','Battery Saver':'Tipid baterya'});
+$('cgQuality').value=window.CG3D?.debug().quality||'auto';
+document.body.dataset.cgQuality=$('cgQuality').value;
+$('cgQuality').onchange=()=>window.CG3D?.setQuality($('cgQuality').value);
