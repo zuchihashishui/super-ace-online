@@ -8,7 +8,7 @@ function cgScreenLayout(){
  const inGame=activeView==='colorGameView',on=inGame&&cgPhone(),rotated=on&&innerHeight>innerWidth;
  document.body.classList.toggle('cg-immersive',inGame);document.body.classList.toggle('cg-wide',on);document.body.classList.toggle('cg-rotated',rotated);
  document.documentElement.style.setProperty('--cg-screen-w',(rotated?innerHeight:innerWidth)+'px');document.documentElement.style.setProperty('--cg-screen-h',(rotated?innerWidth:innerHeight)+'px');
- if(!inGame){cgUnlockOrientation();if(cgOwnFullscreen){cgOwnFullscreen=false;if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});}}
+ if(!inGame){cgCloseMenu(false);cgUnlockOrientation();if(cgOwnFullscreen){cgOwnFullscreen=false;if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});}}
 }
 function cgEnterFullscreen(){
  if(activeView!=='colorGameView')return Promise.resolve();
@@ -36,3 +36,29 @@ const cgScreenBaseShow=showView;showView=async function(id){
 $('cgExit').onclick=()=>showView('gameView');$('cgFullscreen').onclick=()=>cgEnterFullscreen();
 addEventListener('resize',cgScreenLayout);screen.orientation?.addEventListener('change',cgScreenLayout);window.visualViewport?.addEventListener('resize',cgScreenLayout);document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement){cgOwnFullscreen=false;cgUnlockOrientation();}cgScreenLayout();});
 cgScreenLayout();
+
+// Keep the existing controls and their handlers; only their presentation changes.
+Object.assign(filipino,{'Game menu':'Menu ng laro'});
+function cgCloseMenu(restore=true){
+ const wasOpen=!$('cgMenuOverlay').hidden;
+ $('cgMenuOverlay').hidden=true;$('cgMenuToggle').setAttribute('aria-expanded','false');
+ $('cgTable').inert=false;
+ if(restore&&wasOpen&&activeView==='colorGameView')$('cgMenuToggle').focus();
+}
+$('cgMenuToggle').onclick=()=>{
+ $('cgMenuOverlay').hidden=false;$('cgMenuToggle').setAttribute('aria-expanded','true');
+ $('cgTable').inert=true;$('cgMenuClose').focus();
+};
+$('cgMenuClose').onclick=()=>cgCloseMenu();
+$('cgMenuOverlay').addEventListener('click',event=>{
+ if(event.target===$('cgMenuOverlay')||event.target.closest('.cg-top button'))cgCloseMenu();
+});
+$('cgMenuPanel').addEventListener('keydown',event=>{
+ if(event.key==='Escape'){event.preventDefault();cgCloseMenu();}
+ if(event.key==='Tab'){
+  const items=[...$('cgMenuPanel').querySelectorAll('button:not(:disabled)')].filter(e=>e.getClientRects().length);
+  const first=items[0],last=items.at(-1);
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ }
+});

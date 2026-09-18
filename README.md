@@ -1,4 +1,8 @@
-# Current update: V38 Full HD and automatic fullscreen
+# Current update: V39 Color Game menu
+
+Floating in-game navigation recovers mobile board space. No database changes. [Details](docs/guides/V39-GAME-MENU.md).
+
+# Previous update: V38 Full HD and automatic fullscreen
 
 Color Game targets a 1080px short-edge render density and requests fullscreen when opened by a click/tap. Includes viewport fallback and clean exit. No database changes. [Details and validation](docs/guides/V38-FULL-HD-FULLSCREEN.md).
 

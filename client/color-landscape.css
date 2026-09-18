@@ -46,3 +46,20 @@ body.cg-immersive{overflow:hidden}
 body.cg-immersive>header,body.cg-immersive>nav{display:none!important}
 body.cg-immersive #cgExit{display:block}
 body.cg-immersive:not(.cg-wide) #colorGameView{position:fixed;inset:0;z-index:40;width:100%;height:100dvh;max-width:none;box-sizing:border-box;margin:0;overflow:auto;padding:12px max(16px,env(safe-area-inset-right)) 20px max(16px,env(safe-area-inset-left));background:#49215a}
+
+/* V39: in-game navigation floats above the board without a toolbar row. */
+#cgMenuToggle{position:absolute;left:16px;top:10px;z-index:15;width:44px;height:44px;min-width:44px;padding:0;border:2px solid #ffe3a5;border-radius:50%;background:linear-gradient(#79517f,#38213e);color:#fff3c5;font-size:27px;box-shadow:0 3px 8px #210e3680;cursor:pointer}
+#cgMenuOverlay[hidden]{display:none!important}
+#cgMenuOverlay{position:absolute;inset:0;z-index:60;background:#160e2ab8;display:flex;align-items:flex-start;justify-content:flex-start;padding:10px;box-sizing:border-box}
+#cgMenuPanel{width:min(360px,100%);max-height:100%;overflow:auto;box-sizing:border-box;background:linear-gradient(145deg,#57345d,#281b35);border:2px solid #e6ba69;border-radius:20px;padding:12px;color:#fff1cf;box-shadow:0 12px 35px #13051b99}
+.cg-menu-heading{display:flex;align-items:center;justify-content:space-between;font-size:18px}
+#cgMenuClose{width:44px;height:44px;min-width:44px;border-radius:50%;font-size:28px;background:#352039;color:#fff0c7;border:1px solid #d6a34b}
+body #colorGameView #cgMenuPanel .cg-top{display:flex;flex-direction:column;height:auto;gap:12px;margin:12px 0 0}
+body #colorGameView #cgMenuPanel .cg-top>div{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+body #colorGameView #cgMenuPanel .cg-top button{min-height:44px;height:auto;padding:10px 12px;font-size:14px;flex:1}
+body #colorGameView #cgMenuPanel #cgExit{display:block;width:100%}
+body #colorGameView #cgMenuPanel #cgSound,body #colorGameView #cgMenuPanel #cgFullscreen{flex:0 0 48px;font-size:23px;margin:0}
+body.cg-wide .cg-fiesta{height:calc(var(--cg-screen-h) - 9px)}
+body.cg-wide .cg-ranking{margin-top:48px}
+body.cg-wide #cgMenuToggle{top:8px;left:19px}
+#cgMenuToggle:focus-visible,#cgMenuPanel button:focus-visible{outline:3px solid #fff;outline-offset:2px}

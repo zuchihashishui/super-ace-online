@@ -23,11 +23,21 @@ for(const mode of ['native','native-phone','denied','missing','delayed','preexis
  if(mode.startsWith('native')){
   await p.waitForFunction(()=>document.fullscreenElement===document.documentElement);assert.deepEqual(await p.evaluate(()=>activation),[true]);assert.equal(await p.evaluate(()=>fullRequests),1);
   const box=await p.locator('#colorGameView').boundingBox(),size=await p.evaluate(()=>({w:innerWidth,h:innerHeight}));assert(Math.abs(box.width-size.w)<2&&Math.abs(box.height-size.h)<2);
-  await p.evaluate(()=>document.exitFullscreen());await p.waitForFunction(()=>!document.fullscreenElement);await p.waitForTimeout(100);assert.equal(await p.evaluate(()=>fullRequests),1,'do not re-enter after user exits');await p.locator('#cgFullscreen').click();await p.waitForFunction(()=>!!document.fullscreenElement);assert.equal(await p.evaluate(()=>fullRequests),2);
+  await p.evaluate(()=>document.exitFullscreen());await p.waitForFunction(()=>!document.fullscreenElement);await p.waitForTimeout(100);assert.equal(await p.evaluate(()=>fullRequests),1,'do not re-enter after user exits');await p.locator('#cgMenuToggle').click();await p.locator('#cgFullscreen').click();await p.waitForFunction(()=>!!document.fullscreenElement);assert.equal(await p.evaluate(()=>fullRequests),2);
  }else if(mode==='denied'||mode==='missing'){
-  await p.waitForFunction(()=>document.body.classList.contains('cg-rotated'));assert.equal(await p.evaluate(()=>!!document.fullscreenElement),false);await p.locator('#cgFullscreen').tap();assert.equal(await p.evaluate(()=>fullRequests),mode==='denied'?2:0);await p.evaluate(()=>cgScreenLayout());assert.equal(await p.evaluate(()=>fullRequests),mode==='denied'?2:0);
+  await p.waitForFunction(()=>document.body.classList.contains('cg-rotated'));assert.equal(await p.evaluate(()=>!!document.fullscreenElement),false);await p.locator('#cgMenuToggle').tap();await p.locator('#cgFullscreen').tap();assert.equal(await p.evaluate(()=>fullRequests),mode==='denied'?2:0);await p.evaluate(()=>cgScreenLayout());assert.equal(await p.evaluate(()=>fullRequests),mode==='denied'?2:0);
  }else if(mode==='preexisting'){assert.equal(await p.evaluate(()=>fullRequests),0);}
- await p.locator('#cgExit').click();await p.waitForFunction(()=>activeView==='gameView'&&!document.body.classList.contains('cg-immersive'));
+ 
+ assert(await p.locator('#cgMenuOverlay').isHidden());
+ if(mode==='denied')await p.screenshot({path:'/tmp/ace-v39-board.png'});
+ await p.locator('#cgMenuToggle').click();assert(await p.locator('#cgMenuPanel').isVisible());
+ assert.equal(await p.locator('#cgTable').evaluate(e=>e.inert),true);if(mode==='denied')await p.screenshot({path:'/tmp/ace-v39-menu.png'});
+ for(const id of ['cgExit','cgLobby','cgClub','cgSound','cgRulesButton','cgFullscreen'])assert(await p.locator('#'+id).isVisible());
+ await p.keyboard.press('Escape');assert(await p.locator('#cgMenuOverlay').isHidden());
+ assert.equal(await p.locator('#cgTable').evaluate(e=>e.inert),false);
+ await p.locator('#cgMenuToggle').click();await p.locator('#cgSound').click();assert(await p.locator('#cgMenuOverlay').isHidden());
+ if(phone){const fit=await p.evaluate(()=>({board:document.querySelector('.cg-fiesta').offsetHeight,game:document.getElementById('colorGameView').clientHeight}));assert(Math.abs(fit.game-fit.board-9)<2);}
+ await p.locator('#cgMenuToggle').click();await p.locator('#cgExit').click();await p.waitForFunction(()=>activeView==='gameView'&&!document.body.classList.contains('cg-immersive'));
  if(mode==='delayed'){await p.evaluate(()=>resolveFullscreen());await p.waitForFunction(()=>!document.fullscreenElement);assert.equal(await p.evaluate(()=>fullExits),1,'late fullscreen must close after leaving');}
  else if(mode==='preexisting'){assert(await p.evaluate(()=>!!document.fullscreenElement));assert.equal(await p.evaluate(()=>fullExits),0,'preserve user-owned fullscreen');}
  else await p.waitForFunction(()=>!document.fullscreenElement);
