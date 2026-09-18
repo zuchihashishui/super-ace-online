@@ -1,4 +1,8 @@
-# Current update: V35 Color Game Lobby Jackpot
+# Current update: V36 Color Game win notification orientation
+
+Win effects and receipt notifications follow the phone game orientation. Fixed double rotation of YOU WIN/BIG WIN and aligned outside-game toast notifications. No database changes. [Details and validation](docs/guides/V36-WIN-ORIENTATION.md).
+
+# Previous update: V35 Color Game Lobby Jackpot
 
 Lobby Jackpot is now active with a real database pool, server settlement, award receipts and Creator funding. Club Jackpot remains disabled. History and phone landscape from V34 are included. [Rules and upgrade notes](docs/guides/V35-COLOR-JACKPOT.md). Schema: V20.
 
