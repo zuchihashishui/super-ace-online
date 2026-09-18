@@ -41,3 +41,8 @@ body.cg-wide .cg-wallet>small,body.cg-wide .cg-total>small,body.cg-wide .cg-wall
 body.cg-wide .cg-ranking>p{font-size:9px}
 body.cg-wide .cg-ranking li>span,body.cg-wide .cg-ranking li>strong{font-size:10px}
 body.cg-wide .cg-result{font-size:10px}
+/* Fill the browser viewport immediately, including when native fullscreen is unavailable. */
+body.cg-immersive{overflow:hidden}
+body.cg-immersive>header,body.cg-immersive>nav{display:none!important}
+body.cg-immersive #cgExit{display:block}
+body.cg-immersive:not(.cg-wide) #colorGameView{position:fixed;inset:0;z-index:40;width:100%;height:100dvh;max-width:none;box-sizing:border-box;margin:0;overflow:auto;padding:12px max(16px,env(safe-area-inset-right)) 20px max(16px,env(safe-area-inset-left));background:#49215a}

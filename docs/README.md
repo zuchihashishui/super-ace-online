@@ -1,3 +1,5 @@
+Current: [V38 Full HD / fullscreen](guides/V38-FULL-HD-FULLSCREEN.md)
+
 Current: [V37 mobile HD](guides/V37-MOBILE-HD.md)
 
 Current: [V36 win orientation](guides/V36-WIN-ORIENTATION.md)

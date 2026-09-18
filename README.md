@@ -1,4 +1,8 @@
-# Current update: V37 Color Game mobile HD
+# Current update: V38 Full HD and automatic fullscreen
+
+Color Game targets a 1080px short-edge render density and requests fullscreen when opened by a click/tap. Includes viewport fallback and clean exit. No database changes. [Details and validation](docs/guides/V38-FULL-HD-FULLSCREEN.md).
+
+# Previous update: V37 Color Game mobile HD
 
 Adaptive high-density dice rendering, sharper shadows and clearer mobile labels. Keeps the V36 win orientation fix. No database changes. [Details and validation](docs/guides/V37-MOBILE-HD.md).
 

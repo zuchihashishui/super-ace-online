@@ -10,6 +10,8 @@ const {chromium}=require(process.env.ACE_PLAYWRIGHT||'playwright');
   await p.route('**/*',async route=>{if(route.request().resourceType()==='document'){const response=await route.fetch();return route.fulfill({response,body:(await response.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'')});}return route.continue();});
   await p.goto(process.env.ACE_TEST_URL);
   await p.evaluate(()=>{
+   // Native fullscreen has a separate suite; keep this one resizable for rotation fixtures.
+   document.documentElement.requestFullscreen=()=>Promise.reject(new Error('CSS orientation fixture'));
    window.$=id=>document.getElementById(id);window.filipino={};window.t=s=>s;window.money=n=>(n/100).toFixed(2);window.fmt=n=>n.toLocaleString('en-US');window.player={id:'fixture-player',role:'PLAYER'};window.gameMode='LOBBY';window.activeView='gameView';window.ready=true;window.sound=false;window.volume=0;window.canPlay=()=>true;window.applyRole=()=>{};window.cgBusy=false;window.testNotices=[];window.testReads=[];window.errorText=e=>e.message;window.cgCue=()=>{};
    window.api=async(path)=>{if(path==='notifications')return testNotices;testReads.push(path);testNotices=[];return {ok:true};};
    window.toast=message=>{$('toast').textContent=message;$('toast').hidden=false};
