@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='ace-win-ui-') as tmp:
             try:
                 with socket.create_connection(('127.0.0.1', port), timeout=.1): break
             except OSError: time.sleep(.05)
-        subprocess.run(['node', str(root/'tools/color_win_orientation_browser.cjs')], cwd=root, env={**os.environ, 'ACE_TEST_URL':f'http://127.0.0.1:{port}'}, check=True, timeout=120)
+        subprocess.run(['node', str(root/'tools'/os.environ.get('ACE_UI_TEST_SUITE','color_win_orientation_browser.cjs'))], cwd=root, env={**os.environ, 'ACE_TEST_URL':f'http://127.0.0.1:{port}'}, check=True, timeout=240)
     finally:
         server.terminate()
         server.wait(timeout=10)

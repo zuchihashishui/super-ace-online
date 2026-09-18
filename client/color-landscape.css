@@ -33,3 +33,11 @@ body.cg-rotated #toast{inset:auto;left:16px;top:50%;transform-origin:0 0;transfo
 body.cg-wide .cg-board{grid-template-columns:minmax(0,1fr);justify-content:stretch}body.cg-wide .cg-jackpot-title{width:46%;justify-content:space-around}body.cg-wide .cg-jackpot-title h2{font-size:clamp(15px,2.5vw,22px)}
 /* Fit History's controls and results into a short landscape viewport. */
 body.cg-wide .cg-history-cabinet{display:grid;grid-template-columns:1fr auto;gap:4px 10px;border-width:7px;padding:10px 13px 7px}body.cg-wide #cgFrequency{grid-column:1/-1;padding:10px 12px 6px}body.cg-wide #cgFrequency .cg-swatch{width:36px;max-width:100%;max-height:36px}body.cg-wide #cgFrequency small{font-size:14px;margin-top:4px}body.cg-wide #cgHistorySample{grid-column:1;grid-row:2;align-self:center;text-align:left;margin:0}body.cg-wide .cg-history-pager{grid-column:2;grid-row:2;margin:0;gap:7px}body.cg-wide .cg-history-scroll{grid-column:1/-1;grid-row:3;padding-block:5px;margin-top:0}body.cg-wide #cgHistoryList .cg-swatch{max-width:25px}body.cg-wide #cgHistoryList .cg-mini-dice{padding:5px;gap:4px}body.cg-wide #cgHistoryList .cg-history-row>b{font-size:18px;margin-top:5px}body.cg-wide #cgHistoryDetail{grid-column:1/-1;margin:0}body.cg-wide #cgHistoryDialog .cg-history-note{grid-column:1/-1;margin:0;font-size:8px}
+
+/* HD mobile: keep text/vector panels crisp and readable at native screen density. */
+body.cg-wide .cg-case{filter:none}
+body.cg-wide .cg-color-name b{font-size:9px;font-weight:900}
+body.cg-wide .cg-wallet>small,body.cg-wide .cg-total>small,body.cg-wide .cg-wallet>span{font-size:10px}
+body.cg-wide .cg-ranking>p{font-size:9px}
+body.cg-wide .cg-ranking li>span,body.cg-wide .cg-ranking li>strong{font-size:10px}
+body.cg-wide .cg-result{font-size:10px}

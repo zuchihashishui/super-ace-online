@@ -1,4 +1,8 @@
-# Current update: V36 Color Game win notification orientation
+# Current update: V37 Color Game mobile HD
+
+Adaptive high-density dice rendering, sharper shadows and clearer mobile labels. Keeps the V36 win orientation fix. No database changes. [Details and validation](docs/guides/V37-MOBILE-HD.md).
+
+# Previous update: V36 Color Game win notification orientation
 
 Win effects and receipt notifications follow the phone game orientation. Fixed double rotation of YOU WIN/BIG WIN and aligned outside-game toast notifications. No database changes. [Details and validation](docs/guides/V36-WIN-ORIENTATION.md).
 

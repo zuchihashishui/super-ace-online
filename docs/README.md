@@ -1,3 +1,5 @@
+Current: [V37 mobile HD](guides/V37-MOBILE-HD.md)
+
 Current: [V36 win orientation](guides/V36-WIN-ORIENTATION.md)
 
 Current: [V35 Lobby Jackpot](guides/V35-COLOR-JACKPOT.md) · [Validation](test-results/V35-VALIDATION.md)
