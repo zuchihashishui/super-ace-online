@@ -1,4 +1,8 @@
-# Current update: V40 adaptive graphics
+# Current update: V41 Scatter bonus fix
+
+Three Scatter on the initial board or after a cascade award 10 free spins, once per spin. [Release notes and validation](docs/guides/V41-SCATTER-FIX.md). No database changes.
+
+# Previous update: V40 adaptive graphics
 
 Color Game adds Auto / High / Battery Saver, refined dice lighting and bounded chip flights. [Details and validation](docs/guides/V40-ADAPTIVE-GRAPHICS.md). No database changes.
 

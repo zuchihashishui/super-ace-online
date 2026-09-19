@@ -39,6 +39,7 @@ public class GameEngine {
   String[][] grid=copy(first),initial=copy(first);int scatter=0;for(String[] col:grid)for(String s:col)if(s.equals("S"))scatter++;
   int award=scatter>=3?10:0;long total=0;List<Cascade> steps=new ArrayList<>();
   for(int count=0;count<1000;count++){
+   if(award==0){int visible=0;for(String[] col:grid)for(String symbol:col)if(symbol.equals("S"))visible++;if(visible>=3)award=10;}
    Evaluation e=evaluate(grid);if(e.hits().isEmpty())return new Outcome(initial,List.copyOf(steps),copy(grid),award,total);
    int multiplier=MULTIPLIERS[Math.min(count,3)];long raw=Math.multiplyExact(Math.multiplyExact(bet,e.units()),multiplier);long win=Math.round(raw*payoutScale/10000.0);total=Math.addExact(total,win);
    for(int c=0;c<5;c++){List<String> keep=new ArrayList<>();for(int r=0;r<4;r++)if(!e.hits().contains(c+","+r))keep.add(grid[c][r]);int missing=4-keep.size();for(int r=0;r<missing;r++)grid[c][r]=symbol();for(int r=0;r<keep.size();r++)grid[c][missing+r]=keep.get(r);}
